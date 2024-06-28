@@ -31,3 +31,11 @@ func NewPictureRetrievalHandler(svc service.PictureRetrievalService) *PictureRet
 func NewGalleryHandler(service service.GalleryService) *GalleryHandler {
 	return &GalleryHandler{service: service}
 }
+
+func NewWebPageHandler(service service.WebPageService) *WebPageHandler {
+	return &WebPageHandler{service: service}
+}
+
+type WebPageHandler struct {
+	service service.WebPageService
+}

@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"io"
 	"os"
 
@@ -36,5 +37,14 @@ type GalleryRepository interface {
 	PublishGallery(galleryID string) error
 	GetGalleryByID(galleryID string) (*model.Gallery, error)
 	ListGalleries() ([]model.Gallery, error)
-	GetImagesByGalleryID(galleryID string) ([]model.Revision, error) 
+	GetImagesByGalleryID(galleryID string) ([]model.Revision, error)
+}
+
+// WebPageRepository defines the operations for managing web pages.
+type WebPageRepository interface {
+	CreateWebPage(ctx context.Context, wp *model.WebPage) error
+	UpdateWebPage(ctx context.Context, wp *model.WebPage) error
+	DeleteWebPage(ctx context.Context, id string) error
+	GetWebPage(ctx context.Context, id string) (*model.WebPage, error)
+	ListWebPages(ctx context.Context) ([]model.WebPage, error)
 }

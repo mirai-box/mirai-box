@@ -9,8 +9,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/mirai-box/mirai-box/internal/repository"
 	"github.com/mirai-box/mirai-box/internal/model"
+	"github.com/mirai-box/mirai-box/internal/repository"
 )
 
 type pictureManagementService struct {
@@ -92,15 +92,15 @@ func (ps *pictureManagementService) AddRevision(pictureID string, fileData io.Re
 		slog.Error("could not store new revision of the file", "error", err)
 		return nil, err
 	}
-
 	revision.FilePath = filePath
+
 	if err := ps.pictureRepo.SaveRevision(revision); err != nil {
-		slog.Error("could not store new revision info", "error", err, "revision", revision)
+		slog.Error("could not save revision info", "error", err, "revision", revision)
 		return nil, err
 	}
 
 	if err := ps.pictureRepo.UpdateLatestRevision(pictureID, revision.ID); err != nil {
-		slog.Error("could not add latest revision info", "error", err, "revision", revision)
+		slog.Error("could not update latest revision info", "error", err, "revision", revision)
 		return nil, err
 	}
 

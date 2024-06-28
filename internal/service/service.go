@@ -34,3 +34,11 @@ type GalleryService interface {
 	ListGalleries() ([]model.Gallery, error)
 	GetImagesByGalleryID(galleryID string) ([]model.Revision, error)
 }
+
+type WebPageService interface {
+	CreateWebPage(title, html string) (*model.WebPage, error)
+	UpdateWebPage(id, title, html string) (*model.WebPage, error)
+	DeleteWebPage(id string) error
+	GetWebPage(id string) (*model.WebPage, error)
+	ListWebPages() ([]model.WebPage, error)
+}

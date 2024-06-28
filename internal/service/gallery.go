@@ -10,14 +10,17 @@ import (
 	"github.com/mirai-box/mirai-box/internal/repository"
 )
 
+// galleryService implements business logic for galleries.
 type galleryService struct {
 	galleryRepo repository.GalleryRepository
 }
 
+// NewGalleryService creates a new gallery service.
 func NewGalleryService(galleryRepo repository.GalleryRepository) *galleryService {
 	return &galleryService{galleryRepo: galleryRepo}
 }
 
+// CreateGallery creates a new gallery with the given title.
 func (s *galleryService) CreateGallery(title string) (*model.Gallery, error) {
 	gallery := &model.Gallery{
 		ID:        uuid.NewString(),
@@ -32,15 +35,20 @@ func (s *galleryService) CreateGallery(title string) (*model.Gallery, error) {
 	return gallery, nil
 }
 
+// AddImageToGallery adds an image (identified by its revision ID) to a gallery.
 func (s *galleryService) AddImageToGallery(galleryID, revisionID string) (*model.Gallery, error) {
+	// Validate that a revision ID is provided.
 	if revisionID == "" {
 		return nil, fmt.Errorf("revisionID can't be empty")
 	}
 
-	if err := s.galleryRepo.AddImageToGallery(galleryID, revisionID); err != nil {
+	// Add the image to the gallery in the repository.
+	err := s.galleryRepo.AddImageToGallery(galleryID, revisionID)
+	if err != nil {
 		return nil, err
 	}
 
+	// Return the updated gallery.
 	return s.galleryRepo.GetGalleryByID(galleryID)
 }
 
