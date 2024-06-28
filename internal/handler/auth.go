@@ -6,10 +6,10 @@ import (
 	"net/http"
 
 	"github.com/gorilla/sessions"
-
 	"github.com/mirai-box/mirai-box/internal/service"
 )
 
+// UserHandler is a struct that holds references to the user service and session store.
 type UserHandler struct {
 	service service.UserService
 	store   *sessions.CookieStore
@@ -22,6 +22,7 @@ type LoginRequest struct {
 	KeepSignedIn bool   `json:"keepSignedIn"`
 }
 
+// NewUserHandler creates a new UserHandler.
 func NewUserHandler(service service.UserService, sessionKey string) *UserHandler {
 	store := sessions.NewCookieStore([]byte(sessionKey))
 	return &UserHandler{
@@ -32,11 +33,17 @@ func NewUserHandler(service service.UserService, sessionKey string) *UserHandler
 
 // AuthCheckHandler checks if the user is authenticated.
 func (h *UserHandler) AuthCheckHandler(w http.ResponseWriter, r *http.Request) {
-	session, _ := h.store.Get(r, "session-name")
+	session, err := h.store.Get(r, "session-name")
+	if err != nil {
+		slog.Error("AuthCheckHandler: failed to get session", "error", err)
+		respondWithError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
 	userID, ok := session.Values["user_id"]
 	if !ok {
 		slog.Error("AuthCheckHandler: unauthorized session")
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		respondWithError(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 
@@ -44,65 +51,80 @@ func (h *UserHandler) AuthCheckHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	if _, err := w.Write([]byte("OK")); err != nil {
-		slog.Error("error writing response")
+		slog.Error("AuthCheckHandler: error writing response", "error", err)
 	}
 }
 
 // LoginHandler handles user login and session creation.
 func (h *UserHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	var req LoginRequest
-	err := json.NewDecoder(r.Body).Decode(&req)
-	if err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		slog.Error("LoginHandler: failed to decode request", "error", err)
+		respondWithError(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 
 	if req.Username == "" || req.Password == "" {
 		slog.Error("LoginHandler: empty credentials")
-		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+		respondWithError(w, http.StatusUnauthorized, "Invalid credentials")
 		return
 	}
 
 	user, err := h.service.Authenticate(req.Username, req.Password)
 	if err != nil {
 		slog.Error("LoginHandler: invalid credentials", "error", err, "username", req.Username)
-		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+		respondWithError(w, http.StatusUnauthorized, "Invalid credentials")
 		return
 	}
 
-	session, _ := h.store.Get(r, "session-name")
-	session.Values["user_id"] = user.ID
+	session, err := h.store.Get(r, "session-name")
+	if err != nil {
+		slog.Error("LoginHandler: failed to get session", "error", err)
+		respondWithError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
 
+	session.Values["user_id"] = user.ID
 	if req.KeepSignedIn {
 		session.Options.MaxAge = 7 * 24 * 60 * 60 // 1 week
 	} else {
 		session.Options.MaxAge = 24 * 60 * 60 // 1 day
 	}
 
-	session.Save(r, w)
+	if err := session.Save(r, w); err != nil {
+		slog.Error("LoginHandler: failed to save session", "error", err)
+		respondWithError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
 
 	slog.Info("login successful", "user", req.Username, "user_id", user.ID)
 
 	w.WriteHeader(http.StatusOK)
 	if _, err := w.Write([]byte("OK")); err != nil {
-		slog.Error("error writing response")
+		slog.Error("LoginHandler: error writing response", "error", err)
 	}
 }
 
 // AuthMiddleware checks for a valid session and user role before allowing access to admin routes.
 func (h *UserHandler) AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		session, _ := h.store.Get(r, "session-name")
+		session, err := h.store.Get(r, "session-name")
+		if err != nil {
+			slog.Error("AuthMiddleware: failed to get session", "error", err)
+			respondWithError(w, http.StatusForbidden, "Forbidden")
+			return
+		}
+
 		userID, ok := session.Values["user_id"]
 		if !ok {
-			http.Error(w, "Forbidden", http.StatusForbidden)
+			respondWithError(w, http.StatusForbidden, "Forbidden")
 			return
 		}
 
 		user, err := h.service.FindByID(userID.(string))
 		if err != nil || user.Role != "admin" {
-			slog.Error("LoginHandler: invalid credentials", "error", err)
-			http.Error(w, "Forbidden", http.StatusForbidden)
+			slog.Error("AuthMiddleware: invalid credentials or role", "error", err)
+			respondWithError(w, http.StatusForbidden, "Forbidden")
 			return
 		}
 

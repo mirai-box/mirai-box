@@ -12,6 +12,9 @@ const (
 	defaultDebugLevel = "debug"
 	defualtDBPort     = "5432"
 	defaultDBHost     = "127.0.0.1"
+	defaultDBName     = "picture_db"
+	defaultDBPass     = "picture_db"
+	defaultDBUser     = "picture_db"
 	defaultAppStage   = localStage
 )
 
@@ -75,15 +78,19 @@ func GetApplicationConfig() (*Config, error) {
 		ProjectRoot: projectRoot,
 		SessionKey:  sessionKey,
 		LogLevel:    parseLogLevel(getEnv("DEBUG_LEVEL", defaultDebugLevel)),
-		Database: &DatabaseConfig{
-			Host:     getEnv("DB_HOST", defaultDBHost),
-			Port:     getEnv("DB_PORT", defualtDBPort),
-			Username: getEnv("DB_USER", "root"),
-			Password: getEnv("DB_PASSWORD", ""),
-			Database: getEnv("DB_NAME", "picture_db"),
-			SSLMode:  "disable",
-		},
+		Database:    GetDatabaseConfg(),
 	}, nil
+}
+
+func GetDatabaseConfg() *DatabaseConfig {
+	return &DatabaseConfig{
+		Host:     getEnv("DB_HOST", defaultDBHost),
+		Port:     getEnv("DB_PORT", defualtDBPort),
+		Username: getEnv("DB_USER", defaultDBUser),
+		Password: getEnv("DB_PASSWORD", defaultDBPass),
+		Database: getEnv("DB_NAME", defaultDBName),
+		SSLMode:  "disable",
+	}
 }
 
 func (conf *Config) IsLocal() bool {

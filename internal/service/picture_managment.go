@@ -49,11 +49,6 @@ func (ps *pictureManagementService) CreatePictureAndRevision(fileData io.Reader,
 		LatestRevisionID: revisionID,
 	}
 
-	if err := ps.pictureRepo.SavePicture(picture); err != nil {
-		slog.Error("could not store picture info", "error", err, "picture", picture)
-		return nil, err
-	}
-
 	revision := &model.Revision{
 		ID:        revisionID,
 		PictureID: picture.ID,
@@ -65,11 +60,15 @@ func (ps *pictureManagementService) CreatePictureAndRevision(fileData io.Reader,
 	filePath, err := ps.safeFile(fileData, filename, picture.ID, revision.Version)
 	if err != nil {
 		slog.Error("could not store file", "error", err)
+		return nil, err
 	}
 
 	revision.FilePath = filePath
-	if err := ps.pictureRepo.SaveRevision(revision); err != nil {
-		slog.Error("could not store revision info", "error", err, "revision", revision)
+
+	// Save picture and revision in a single transaction
+	err = ps.pictureRepo.SavePictureAndRevision(picture, revision)
+	if err != nil {
+		slog.Error("could not store picture and revision info", "error", err, "picture", picture, "revision", revision)
 		return nil, err
 	}
 
@@ -134,7 +133,7 @@ func (ps *pictureManagementService) ListAllPictures() ([]model.Picture, error) {
 func (ps *pictureManagementService) ListAllRevisions(pictureID string) ([]model.Revision, error) {
 	revisions, err := ps.pictureRepo.ListAllRevisions(pictureID)
 	if err != nil {
-		slog.Error("could not list all pictures", "error", err)
+		slog.Error("could not list all revisions", "error", err)
 		return nil, err
 	}
 

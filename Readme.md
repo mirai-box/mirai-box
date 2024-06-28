@@ -3,11 +3,11 @@
 Add admin user:
 
 ```
-docker exec -it postgres-db psql -U postgres
-# psql -U postgres -h localhost
+docker exec -it postgres
+DROP DATABASE IF EXISTS picture_db;
 
 -- Create the user
-CREATE USER picture_db WITH PASSWORD 'yourpassword';
+CREATE USER picture_db WITH PASSWORD 'picture_db';
 
 -- Create the database
 CREATE DATABASE picture_db OWNER picture_db;

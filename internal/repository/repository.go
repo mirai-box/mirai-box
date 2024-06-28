@@ -9,7 +9,6 @@ import (
 )
 
 type PictureRepository interface {
-	SavePicture(picture *model.Picture) error
 	SaveRevision(revision *model.Revision) error
 	GetMaxRevisionVersion(pictureID string) (int, error)
 	ListLatestRevisions() ([]model.Revision, error)
@@ -19,6 +18,7 @@ type PictureRepository interface {
 	GetPictureByID(pictureID string) (*model.Picture, error)
 	UpdateLatestRevision(pictureID, revisionID string) error
 	ListAllPictures() ([]model.Picture, error)
+	SavePictureAndRevision(picture *model.Picture, revision *model.Revision) error
 }
 
 type StorageRepository interface {

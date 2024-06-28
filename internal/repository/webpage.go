@@ -14,7 +14,7 @@ type SQLWebPageRepository struct {
 }
 
 // NewSQLWebPageRepository creates a new SQLWebPageRepository.
-func NewSQLWebPageRepository(db *sqlx.DB) WebPageRepository {
+func NewWebPageRepository(db *sqlx.DB) WebPageRepository {
 	return &SQLWebPageRepository{db: db}
 }
 

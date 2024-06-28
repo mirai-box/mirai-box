@@ -5,7 +5,6 @@ import (
 	"log/slog"
 
 	"github.com/jmoiron/sqlx"
-
 	"github.com/mirai-box/mirai-box/internal/model"
 )
 
@@ -17,14 +16,6 @@ func NewPictureRepository(db *sqlx.DB) PictureRepository {
 	return &sqlPictureRepository{
 		db: db,
 	}
-}
-
-func (r *sqlPictureRepository) SavePicture(picture *model.Picture) error {
-	query := `INSERT INTO pictures
-		(id, title, filename, content_type, latest_revision_id, created_at) 
-		VALUES (:id, :title, :filename, :content_type, :latest_revision_id, :created_at)`
-	_, err := r.db.NamedExec(query, picture)
-	return err
 }
 
 func (r *sqlPictureRepository) SaveRevision(revision *model.Revision) error {
@@ -39,6 +30,41 @@ func (r *sqlPictureRepository) SaveRevision(revision *model.Revision) error {
 	VALUES (:id, :picture_id, :version, :file_path, :comment, :art_id, :created_at)`
 	_, err := r.db.NamedExec(query, revision)
 	return err
+}
+
+func (r *sqlPictureRepository) SavePictureAndRevision(picture *model.Picture, revision *model.Revision) error {
+	tx, err := r.db.Beginx()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// Insert revision first
+	queryRev := `INSERT INTO revisions (
+		id, 
+		picture_id, 
+		version, 
+		file_path, 
+		comment,
+		art_id,
+		created_at) 
+	VALUES (:id, :picture_id, :version, :file_path, :comment, :art_id, :created_at)`
+	_, err = tx.NamedExec(queryRev, revision)
+	if err != nil {
+		return err
+	}
+
+	// Now insert picture with the revision ID
+	picture.LatestRevisionID = revision.ID
+	queryPic := `INSERT INTO pictures
+		(id, title, filename, content_type, latest_revision_id, created_at) 
+		VALUES (:id, :title, :filename, :content_type, :latest_revision_id, :created_at)`
+	_, err = tx.NamedExec(queryPic, picture)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
 }
 
 func (r *sqlPictureRepository) GetMaxRevisionVersion(pictureID string) (int, error) {

@@ -65,6 +65,11 @@ func (s *galleryService) ListGalleries() ([]model.Gallery, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	if len(galleries) == 0 {
+		return []model.Gallery{}, nil
+	}
+
 	return galleries, nil
 }
 

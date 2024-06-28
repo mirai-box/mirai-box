@@ -5,48 +5,115 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
+
 	"github.com/mirai-box/mirai-box/internal/model"
+	"github.com/mirai-box/mirai-box/internal/service"
 )
 
+// NewWebPageHandler creates a new WebPageHandler
+func NewWebPageHandler(service service.WebPageService) *WebPageHandler {
+	return &WebPageHandler{service: service}
+}
+
+// WebPageHandler is a struct that holds a reference to the service layer
+type WebPageHandler struct {
+	service service.WebPageService
+}
+
+// CreateWebPageHandler handles creating a new webpage
 func (h *WebPageHandler) CreateWebPageHandler(w http.ResponseWriter, r *http.Request) {
 	slog.Debug("handler.CreateWebPageHandler")
 
 	var req model.WebPage
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		slog.Error("Failed to decode  request", "error", err, "req", req)
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		slog.Error("Failed to decode request", "error", err, "req", req)
+		respondWithError(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 
 	wp, err := h.service.CreateWebPage(req.Title, req.HTML)
 	if err != nil {
-		slog.Error("Failed to create gallery", "error", err, "req", req)
-		http.Error(w, "Failed to create gallery", http.StatusInternalServerError)
+		slog.Error("Failed to create webpage", "error", err, "req", req)
+		respondWithError(w, http.StatusInternalServerError, "Failed to create webpage")
 		return
 	}
 
-	slog.Info("gallery created", "Title", req.Title)
-
-	respondWithJSON(w, http.StatusCreated, jsonResponse{Status: "success", Data: wp})
+	slog.Info("webpage created", "Title", req.Title)
+	respondJson(w, wp)
 }
 
+// GetWebPageHandler handles retrieving a webpage by ID
 func (h *WebPageHandler) GetWebPageHandler(w http.ResponseWriter, r *http.Request) {
 	slog.Debug("handler.GetWebPageHandler")
-	id := r.URL.Query().Get("id") // Extract ID from query parameters
+	id := chi.URLParam(r, "id") // Extract ID from URL parameters
 
 	wp, err := h.service.GetWebPage(id)
 	if err != nil {
 		slog.Error("Failed to get webpage", "error", err, "id", id)
-		http.Error(w, "Failed to get webpage", http.StatusInternalServerError)
+		respondWithError(w, http.StatusInternalServerError, "Failed to get webpage")
 		return
 	}
 
 	if wp == nil {
 		slog.Error("Webpage not found", "id", id)
-		http.Error(w, "Webpage not found", http.StatusNotFound)
+		respondWithError(w, http.StatusNotFound, "Webpage not found")
 		return
 	}
 
-	respondWithJSON(w, http.StatusOK, jsonResponse{Status: "success", Data: wp})
+	respondJson(w, wp)
+}
+
+// UpdateWebPageHandler handles updating an existing webpage
+func (h *WebPageHandler) UpdateWebPageHandler(w http.ResponseWriter, r *http.Request) {
+	slog.Debug("handler.UpdateWebPageHandler")
+
+	id := chi.URLParam(r, "id")
+
+	var req model.WebPage
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		slog.Error("Failed to decode request", "error", err, "req", req)
+		respondWithError(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	wp, err := h.service.UpdateWebPage(id, req.Title, req.HTML)
+	if err != nil {
+		slog.Error("Failed to update webpage", "error", err, "id", id, "req", req)
+		respondWithError(w, http.StatusInternalServerError, "Failed to update webpage")
+		return
+	}
+
+	slog.Info("webpage updated", "id", id)
+	respondJson(w, wp)
+}
+
+// DeleteWebPageHandler handles deleting a webpage by ID
+func (h *WebPageHandler) DeleteWebPageHandler(w http.ResponseWriter, r *http.Request) {
+	slog.Debug("handler.DeleteWebPageHandler")
+	id := chi.URLParam(r, "id")
+
+	if err := h.service.DeleteWebPage(id); err != nil {
+		slog.Error("Failed to delete webpage", "error", err, "id", id)
+		respondWithError(w, http.StatusInternalServerError, "Failed to delete webpage")
+		return
+	}
+
+	slog.Info("webpage deleted", "id", id)
+	respondJson(w, jsonResponse{Status: "success"})
+}
+
+// ListWebPagesHandler handles listing all webpages
+func (h *WebPageHandler) ListWebPagesHandler(w http.ResponseWriter, r *http.Request) {
+	slog.Debug("handler.ListWebPagesHandler")
+
+	webpages, err := h.service.ListWebPages()
+	if err != nil {
+		slog.Error("Failed to list webpages", "error", err)
+		respondWithError(w, http.StatusInternalServerError, "Failed to list webpages")
+		return
+	}
+
+	respondJson(w, webpages)
 }
