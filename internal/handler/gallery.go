@@ -97,6 +97,18 @@ func (h *GalleryHandler) ListGalleries(w http.ResponseWriter, r *http.Request) {
 	respondJson(w, galleries)
 }
 
+// GetMainGallery handles retrieving the main gallery
+func (h *GalleryHandler) GetMainGallery(w http.ResponseWriter, r *http.Request) {
+	gallery, err := h.service.GetMainGallery()
+	if err != nil {
+		slog.Error("Failed to get main gallery images", "error", err)
+		respondWithError(w, http.StatusInternalServerError, "Failed to get main gallery images")
+		return
+	}
+
+	respondJson(w, gallery)
+}
+
 // GetGalleryByID handles retrieving a gallery by its ID
 func (h *GalleryHandler) GetGalleryByID(w http.ResponseWriter, r *http.Request) {
 	galleryID := chi.URLParam(r, "galleryID")

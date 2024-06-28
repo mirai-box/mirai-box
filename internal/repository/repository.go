@@ -38,6 +38,7 @@ type GalleryRepository interface {
 	GetGalleryByID(galleryID string) (*model.Gallery, error)
 	ListGalleries() ([]model.Gallery, error)
 	GetImagesByGalleryID(galleryID string) ([]model.Revision, error)
+	GetMainGallery() (*model.Gallery, error)
 }
 
 // WebPageRepository defines the operations for managing web pages.

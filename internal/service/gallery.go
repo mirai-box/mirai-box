@@ -85,3 +85,13 @@ func (s *galleryService) GetImagesByGalleryID(galleryID string) ([]model.Revisio
 
 	return revisions, nil
 }
+
+// GetMainGallery retrieves the main gallery
+func (s *galleryService) GetMainGallery() ([]model.Revision, error) {
+	gallery, err := s.galleryRepo.GetMainGallery()
+	if err != nil {
+		return nil, err
+	}
+
+	return s.GetImagesByGalleryID(gallery.ID)
+}

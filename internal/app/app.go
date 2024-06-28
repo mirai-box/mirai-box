@@ -69,7 +69,7 @@ func New(conf *config.Config) (*Application, error) {
 
 	// Public Routes
 	mux.Get("/art/{artID}", pictureRetrievalHandler.SharedPictureHandler)
-	mux.Get("/galleries/{galleryID}", galleryHandler.GetGalleryByID)
+	mux.Get("/galleries/main", galleryHandler.GetMainGallery)
 	mux.Get("/galleries/{galleryID}/images", galleryHandler.GetImagesByGalleryIDHandler)
 
 	// Admin Routes

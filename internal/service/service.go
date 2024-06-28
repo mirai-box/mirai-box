@@ -33,6 +33,7 @@ type GalleryService interface {
 	GetGalleryByID(galleryID string) (*model.Gallery, error)
 	ListGalleries() ([]model.Gallery, error)
 	GetImagesByGalleryID(galleryID string) ([]model.Revision, error)
+	GetMainGallery() ([]model.Revision, error)
 }
 
 type WebPageService interface {

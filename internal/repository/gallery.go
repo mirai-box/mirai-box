@@ -1,6 +1,9 @@
 package repository
 
 import (
+	"database/sql"
+	"errors"
+
 	"github.com/jmoiron/sqlx"
 
 	"github.com/mirai-box/mirai-box/internal/model"
@@ -67,4 +70,18 @@ WHERE gi.gallery_id = $1`
 		return nil, err
 	}
 	return revisions, nil
+}
+
+// GetMainGallery retrieves the main gallery
+func (r *SQLGalleryRepository) GetMainGallery() (*model.Gallery, error) {
+	var gallery model.Gallery
+	query := "SELECT id, title FROM galleries WHERE title = 'Main'"
+	err := r.db.QueryRow(query).Scan(&gallery.ID, &gallery.Title)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, errors.New("main gallery not found")
+		}
+		return nil, err
+	}
+	return &gallery, nil
 }
