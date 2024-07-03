@@ -88,11 +88,11 @@ func New(conf *config.Config) (*Application, error) {
 		r.Post("/galleries/{galleryID}/images", galleryHandler.AddImageToGallery)
 		r.Post("/galleries/{galleryID}/publish", galleryHandler.PublishGallery)
 
-		r.Get("/webpages", webPageHandler.ListWebPagesHandler)
-		r.Get("/webpages/{id}", webPageHandler.GetWebPageHandler)
-		r.Post("/webpages", webPageHandler.CreateWebPageHandler)
-		r.Put("/webpages/{id}", webPageHandler.UpdateWebPageHandler)
-		r.Delete("/webpages/{id}", webPageHandler.DeleteWebPageHandler)
+		r.Get("/pages", webPageHandler.ListWebPagesHandler)
+		r.Get("/pages/{id}", webPageHandler.GetWebPageHandler)
+		r.Post("/pages", webPageHandler.CreateWebPageHandler)
+		r.Put("/pages/{id}", webPageHandler.UpdateWebPageHandler)
+		r.Delete("/pages/{id}", webPageHandler.DeleteWebPageHandler)
 	})
 
 	mux.Post("/login", userHandler.LoginHandler)
