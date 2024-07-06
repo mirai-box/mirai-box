@@ -20,7 +20,7 @@ func NewWebPageService(repo repository.WebPageRepository) WebPageService {
 }
 
 // CreateWebPage creates a new web page.
-func (s *webPageService) CreateWebPage(title, html string) (*model.WebPage, error) {
+func (s *webPageService) CreateWebPage(ctx context.Context, title, html string) (*model.WebPage, error) {
 	wp := &model.WebPage{
 		ID:        uuid.New().String(),
 		Title:     title,
@@ -38,7 +38,7 @@ func (s *webPageService) CreateWebPage(title, html string) (*model.WebPage, erro
 }
 
 // UpdateWebPage updates an existing web page.
-func (s *webPageService) UpdateWebPage(id, title, html string) (*model.WebPage, error) {
+func (s *webPageService) UpdateWebPage(ctx context.Context, id, title, html string) (*model.WebPage, error) {
 	wp := &model.WebPage{
 		ID:        id,
 		Title:     title,
@@ -55,18 +55,21 @@ func (s *webPageService) UpdateWebPage(id, title, html string) (*model.WebPage, 
 }
 
 // DeleteWebPage deletes a web page by ID.
-func (s *webPageService) DeleteWebPage(id string) error {
+func (s *webPageService) DeleteWebPage(ctx context.Context, id string) error {
 	return s.repo.DeleteWebPage(context.Background(), id)
 }
 
 // GetWebPage retrieves a web page by ID.
-func (s *webPageService) GetWebPage(id string) (*model.WebPage, error) {
+func (s *webPageService) GetWebPage(ctx context.Context, id string) (*model.WebPage, error) {
 	return s.repo.GetWebPage(context.Background(), id)
 }
 
 // ListWebPages retrieves all web pages.
-func (s *webPageService) ListWebPages() ([]model.WebPage, error) {
+func (s *webPageService) ListWebPages(ctx context.Context) ([]model.WebPage, error) {
 	return s.repo.ListWebPages(context.Background())
 }
 
-
+// ListWebPages retrieves all web pages.
+func (s *webPageService) ListWebPagesByType(ctx context.Context, webPagesType string) ([]model.WebPage, error) {
+	return s.repo.ListWebPagesByType(ctx, webPagesType)
+}

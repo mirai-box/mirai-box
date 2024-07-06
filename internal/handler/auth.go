@@ -70,7 +70,7 @@ func (h *UserHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.service.Authenticate(req.Username, req.Password)
+	user, err := h.service.Authenticate(r.Context(), req.Username, req.Password)
 	if err != nil {
 		slog.Error("LoginHandler: invalid credentials", "error", err, "username", req.Username)
 		respondWithError(w, http.StatusUnauthorized, "Invalid credentials")
@@ -121,7 +121,7 @@ func (h *UserHandler) AuthMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		user, err := h.service.FindByID(userID.(string))
+		user, err := h.service.FindByID(r.Context(), userID.(string))
 		if err != nil || user.Role != "admin" {
 			slog.Error("AuthMiddleware: invalid credentials or role", "error", err)
 			respondWithError(w, http.StatusForbidden, "Forbidden")

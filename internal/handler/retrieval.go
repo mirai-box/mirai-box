@@ -29,7 +29,7 @@ func (h *PictureRetrievalHandler) SharedPictureHandler(w http.ResponseWriter, r 
 	slog.Debug("get shared picture by art id", "artID", artID)
 
 	h.handleDownload(w, r, func() (io.ReadCloser, *model.Picture, error) {
-		return h.service.GetSharedPicture(artID)
+		return h.service.GetSharedPicture(r.Context(), artID)
 	}, artID)
 }
 
@@ -40,7 +40,7 @@ func (h *PictureRetrievalHandler) FileRevisionDownloadHandler(w http.ResponseWri
 	slog.Debug("get picture by id and revision", "revisionID", revisionID, "pictureID", pictureID)
 
 	h.handleDownload(w, r, func() (io.ReadCloser, *model.Picture, error) {
-		return h.service.GetPictureByRevision(pictureID, revisionID)
+		return h.service.GetPictureByRevision(r.Context(), pictureID, revisionID)
 	}, revisionID)
 }
 
@@ -50,7 +50,7 @@ func (h *PictureRetrievalHandler) LatestFileDownloadHandler(w http.ResponseWrite
 	slog.Debug("get latest version of the picture by id", "pictureID", pictureID)
 
 	h.handleDownload(w, r, func() (io.ReadCloser, *model.Picture, error) {
-		return h.service.GetPictureByID(pictureID)
+		return h.service.GetPictureByID(r.Context(), pictureID)
 	}, pictureID)
 }
 

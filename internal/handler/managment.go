@@ -22,7 +22,7 @@ func NewPictureManagementHandler(svc service.PictureManagementService) *PictureM
 
 // ListPicturesHandler handles listing all pictures
 func (h *PictureManagementHandler) ListPicturesHandler(w http.ResponseWriter, r *http.Request) {
-	pictures, err := h.service.ListAllPictures()
+	pictures, err := h.service.ListAllPictures(r.Context())
 	if err != nil {
 		slog.Error("Failed to list latest revisions of all files", "error", err)
 		respondWithError(w, http.StatusInternalServerError, "Failed to list latest revisions")
@@ -36,7 +36,7 @@ func (h *PictureManagementHandler) ListPicturesHandler(w http.ResponseWriter, r 
 func (h *PictureManagementHandler) ListRevisionHandler(w http.ResponseWriter, r *http.Request) {
 	pictureID := chi.URLParam(r, "pictureID")
 
-	revisions, err := h.service.ListAllRevisions(pictureID)
+	revisions, err := h.service.ListAllRevisions(r.Context(), pictureID)
 	if err != nil {
 		slog.Error("Failed to list all revisions for a picture", "error", err, "pictureID", pictureID)
 		respondWithError(w, http.StatusInternalServerError, "Failed to list all revisions for a picture")

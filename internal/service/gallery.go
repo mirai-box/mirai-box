@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -21,47 +22,49 @@ func NewGalleryService(galleryRepo repository.GalleryRepository) *galleryService
 }
 
 // CreateGallery creates a new gallery with the given title.
-func (s *galleryService) CreateGallery(title string) (*model.Gallery, error) {
+func (s *galleryService) CreateGallery(ctx context.Context, title string) (*model.Gallery, error) {
 	gallery := &model.Gallery{
 		ID:        uuid.NewString(),
 		Title:     title,
 		CreatedAt: time.Now(),
 		Published: false,
 	}
-	err := s.galleryRepo.CreateGallery(gallery)
+
+	err := s.galleryRepo.CreateGallery(ctx, gallery)
 	if err != nil {
 		return nil, err
 	}
+
 	return gallery, nil
 }
 
 // AddImageToGallery adds an image (identified by its revision ID) to a gallery.
-func (s *galleryService) AddImageToGallery(galleryID, revisionID string) (*model.Gallery, error) {
+func (s *galleryService) AddImageToGallery(ctx context.Context, galleryID, revisionID string) (*model.Gallery, error) {
 	// Validate that a revision ID is provided.
 	if revisionID == "" {
 		return nil, fmt.Errorf("revisionID can't be empty")
 	}
 
 	// Add the image to the gallery in the repository.
-	err := s.galleryRepo.AddImageToGallery(galleryID, revisionID)
+	err := s.galleryRepo.AddImageToGallery(ctx, galleryID, revisionID)
 	if err != nil {
 		return nil, err
 	}
 
 	// Return the updated gallery.
-	return s.galleryRepo.GetGalleryByID(galleryID)
+	return s.galleryRepo.GetGalleryByID(ctx, galleryID)
 }
 
-func (s *galleryService) PublishGallery(galleryID string) error {
-	return s.galleryRepo.PublishGallery(galleryID)
+func (s *galleryService) PublishGallery(ctx context.Context, galleryID string) error {
+	return s.galleryRepo.PublishGallery(ctx, galleryID)
 }
 
-func (s *galleryService) GetGalleryByID(galleryID string) (*model.Gallery, error) {
-	return s.galleryRepo.GetGalleryByID(galleryID)
+func (s *galleryService) GetGalleryByID(ctx context.Context, galleryID string) (*model.Gallery, error) {
+	return s.galleryRepo.GetGalleryByID(ctx, galleryID)
 }
 
-func (s *galleryService) ListGalleries() ([]model.Gallery, error) {
-	galleries, err := s.galleryRepo.ListGalleries()
+func (s *galleryService) ListGalleries(ctx context.Context) ([]model.Gallery, error) {
+	galleries, err := s.galleryRepo.ListGalleries(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -73,8 +76,8 @@ func (s *galleryService) ListGalleries() ([]model.Gallery, error) {
 	return galleries, nil
 }
 
-func (s *galleryService) GetImagesByGalleryID(galleryID string) ([]model.Revision, error) {
-	revisions, err := s.galleryRepo.GetImagesByGalleryID(galleryID)
+func (s *galleryService) GetImagesByGalleryID(ctx context.Context, galleryID string) ([]model.Revision, error) {
+	revisions, err := s.galleryRepo.GetImagesByGalleryID(ctx, galleryID)
 	if err != nil {
 		return nil, err
 	}
@@ -87,11 +90,11 @@ func (s *galleryService) GetImagesByGalleryID(galleryID string) ([]model.Revisio
 }
 
 // GetMainGallery retrieves the main gallery
-func (s *galleryService) GetMainGallery() ([]model.Revision, error) {
-	gallery, err := s.galleryRepo.GetMainGallery()
+func (s *galleryService) GetMainGallery(ctx context.Context) ([]model.Revision, error) {
+	gallery, err := s.galleryRepo.GetGalleryByTitle(context.Background(), "Main")
 	if err != nil {
 		return nil, err
 	}
 
-	return s.GetImagesByGalleryID(gallery.ID)
+	return s.GetImagesByGalleryID(ctx, gallery.ID)
 }

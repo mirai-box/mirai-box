@@ -33,7 +33,7 @@ func (h *WebPageHandler) CreateWebPageHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	wp, err := h.service.CreateWebPage(req.Title, req.HTML)
+	wp, err := h.service.CreateWebPage(r.Context(), req.Title, req.HTML)
 	if err != nil {
 		slog.Error("Failed to create webpage", "error", err, "req", req)
 		respondWithError(w, http.StatusInternalServerError, "Failed to create webpage")
@@ -49,7 +49,7 @@ func (h *WebPageHandler) GetWebPageHandler(w http.ResponseWriter, r *http.Reques
 	slog.Debug("handler.GetWebPageHandler")
 	id := chi.URLParam(r, "id") // Extract ID from URL parameters
 
-	wp, err := h.service.GetWebPage(id)
+	wp, err := h.service.GetWebPage(r.Context(), id)
 	if err != nil {
 		slog.Error("Failed to get webpage", "error", err, "id", id)
 		respondWithError(w, http.StatusInternalServerError, "Failed to get webpage")
@@ -78,7 +78,7 @@ func (h *WebPageHandler) UpdateWebPageHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	wp, err := h.service.UpdateWebPage(id, req.Title, req.HTML)
+	wp, err := h.service.UpdateWebPage(r.Context(), id, req.Title, req.HTML)
 	if err != nil {
 		slog.Error("Failed to update webpage", "error", err, "id", id, "req", req)
 		respondWithError(w, http.StatusInternalServerError, "Failed to update webpage")
@@ -94,7 +94,7 @@ func (h *WebPageHandler) DeleteWebPageHandler(w http.ResponseWriter, r *http.Req
 	slog.Debug("handler.DeleteWebPageHandler")
 	id := chi.URLParam(r, "id")
 
-	if err := h.service.DeleteWebPage(id); err != nil {
+	if err := h.service.DeleteWebPage(r.Context(), id); err != nil {
 		slog.Error("Failed to delete webpage", "error", err, "id", id)
 		respondWithError(w, http.StatusInternalServerError, "Failed to delete webpage")
 		return
@@ -108,7 +108,7 @@ func (h *WebPageHandler) DeleteWebPageHandler(w http.ResponseWriter, r *http.Req
 func (h *WebPageHandler) ListWebPagesHandler(w http.ResponseWriter, r *http.Request) {
 	slog.Debug("handler.ListWebPagesHandler")
 
-	webpages, err := h.service.ListWebPages()
+	webpages, err := h.service.ListWebPages(r.Context())
 	if err != nil {
 		slog.Error("Failed to list webpages", "error", err)
 		respondWithError(w, http.StatusInternalServerError, "Failed to list webpages")

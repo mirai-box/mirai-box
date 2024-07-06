@@ -1,12 +1,13 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"os"
 
-	"github.com/mirai-box/mirai-box/internal/repository"
 	"github.com/mirai-box/mirai-box/internal/model"
+	"github.com/mirai-box/mirai-box/internal/repository"
 )
 
 type pictureRetrievalService struct {
@@ -21,7 +22,7 @@ func NewPictureRetrievalService(pictureRepo repository.PictureRepository, storag
 	}
 }
 
-func (ps *pictureRetrievalService) GetSharedPicture(artID string) (*os.File, *model.Picture, error) {
+func (ps *pictureRetrievalService) GetSharedPicture(ctx context.Context, artID string) (*os.File, *model.Picture, error) {
 	rev, err := ps.pictureRepo.GetRevisionByArtID(artID)
 	if err != nil {
 		slog.Error("service: could not get revision for art id", "error", err, "artID", artID)
@@ -45,7 +46,7 @@ func (ps *pictureRetrievalService) GetSharedPicture(artID string) (*os.File, *mo
 	return file, pic, nil
 }
 
-func (ps *pictureRetrievalService) GetPictureByRevision(pictureID, revisionID string) (*os.File, *model.Picture, error) {
+func (ps *pictureRetrievalService) GetPictureByRevision(ctx context.Context, pictureID, revisionID string) (*os.File, *model.Picture, error) {
 	rev, err := ps.pictureRepo.GetRevisionByID(revisionID)
 	if err != nil {
 		slog.Error("could not get revision for id", "error", err, "revisionID", revisionID)
@@ -74,7 +75,7 @@ func (ps *pictureRetrievalService) GetPictureByRevision(pictureID, revisionID st
 	return file, pic, nil
 }
 
-func (ps *pictureRetrievalService) GetPictureByID(pictureID string) (*os.File, *model.Picture, error) {
+func (ps *pictureRetrievalService) GetPictureByID(ctx context.Context, pictureID string) (*os.File, *model.Picture, error) {
 	pic, err := ps.pictureRepo.GetPictureByID(pictureID)
 	if err != nil {
 		slog.Error("could not get picture for id", "error", err, "pictureID", pictureID)
