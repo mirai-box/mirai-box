@@ -4,11 +4,11 @@ import "time"
 
 // Gallery represents a collection of selected images.
 type Gallery struct {
-	ID          string    `db:"id" json:"id"`
-	Title       string    `db:"title" json:"title"`
-	Description string    `db:"description" json:"description"`
-	CreatedAt   time.Time `db:"created_at" json:"created_at"`
-	Published   bool      `db:"published" json:"published"`
+	ID          string    `db:"id"           json:"id"`
+	Title       string    `db:"title"        json:"title"`
+	GalleryType string    `db:"gallery_type" json:"gallery_type"`
+	CreatedAt   time.Time `db:"created_at"   json:"created_at"`
+	Published   bool      `db:"published"    json:"published"`
 }
 
 // GalleryImage represents the association between a gallery and a picture.

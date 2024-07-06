@@ -18,7 +18,7 @@ func (h *PictureManagementHandler) UploadHandler(w http.ResponseWriter, r *http.
 
 		slog.Debug("upload new picture", "title", title)
 
-		return h.service.CreatePictureAndRevision(file, title, handler.Filename)
+		return h.service.CreatePictureAndRevision(r.Context(), file, title, handler.Filename)
 	})
 }
 
@@ -26,10 +26,10 @@ func (p *PictureManagementHandler) AddRevisionHandler(w http.ResponseWriter, r *
 	p.handleFileUpload(w, r, func(file io.Reader, handler *multipart.FileHeader) (interface{}, error) {
 		comment := r.FormValue("comment")
 		pictureID := r.PathValue("pictureID")
-		
+
 		slog.Debug("add new revision for a picture", "pictureID", pictureID)
-		
-		return p.service.AddRevision(pictureID, file, comment, handler.Filename)
+
+		return p.service.AddRevision(r.Context(), pictureID, file, comment, handler.Filename)
 	})
 }
 

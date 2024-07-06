@@ -2,6 +2,7 @@ package service
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"log/slog"
 	"net/http"
@@ -9,8 +10,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/mirai-box/mirai-box/internal/repository"
 	"github.com/mirai-box/mirai-box/internal/model"
+	"github.com/mirai-box/mirai-box/internal/repository"
 )
 
 type pictureManagementService struct {
@@ -25,7 +26,7 @@ func NewPictureManagementService(pictureRepo repository.PictureRepository, stora
 	}
 }
 
-func (ps *pictureManagementService) CreatePictureAndRevision(fileData io.Reader, title, filename string) (*model.Picture, error) {
+func (ps *pictureManagementService) CreatePictureAndRevision(ctx context.Context, fileData io.Reader, title, filename string) (*model.Picture, error) {
 	// Read the file data into a buffer to detect the content type
 	buffer := make([]byte, 512) // Use the first 512 bytes to detect the content type
 	n, err := fileData.Read(buffer)
@@ -49,11 +50,6 @@ func (ps *pictureManagementService) CreatePictureAndRevision(fileData io.Reader,
 		LatestRevisionID: revisionID,
 	}
 
-	if err := ps.pictureRepo.SavePicture(picture); err != nil {
-		slog.Error("could not store picture info", "error", err, "picture", picture)
-		return nil, err
-	}
-
 	revision := &model.Revision{
 		ID:        revisionID,
 		PictureID: picture.ID,
@@ -65,18 +61,22 @@ func (ps *pictureManagementService) CreatePictureAndRevision(fileData io.Reader,
 	filePath, err := ps.safeFile(fileData, filename, picture.ID, revision.Version)
 	if err != nil {
 		slog.Error("could not store file", "error", err)
+		return nil, err
 	}
 
 	revision.FilePath = filePath
-	if err := ps.pictureRepo.SaveRevision(revision); err != nil {
-		slog.Error("could not store revision info", "error", err, "revision", revision)
+
+	// Save picture and revision in a single transaction
+	err = ps.pictureRepo.SavePictureAndRevision(picture, revision)
+	if err != nil {
+		slog.Error("could not store picture and revision info", "error", err, "picture", picture, "revision", revision)
 		return nil, err
 	}
 
 	return picture, nil
 }
 
-func (ps *pictureManagementService) AddRevision(pictureID string, fileData io.Reader, comment, filename string) (*model.Revision, error) {
+func (ps *pictureManagementService) AddRevision(ctx context.Context, pictureID string, fileData io.Reader, comment, filename string) (*model.Revision, error) {
 	revisionID := uuid.NewString()
 	revision := &model.Revision{
 		ID:        revisionID,
@@ -92,22 +92,22 @@ func (ps *pictureManagementService) AddRevision(pictureID string, fileData io.Re
 		slog.Error("could not store new revision of the file", "error", err)
 		return nil, err
 	}
-
 	revision.FilePath = filePath
+
 	if err := ps.pictureRepo.SaveRevision(revision); err != nil {
-		slog.Error("could not store new revision info", "error", err, "revision", revision)
+		slog.Error("could not save revision info", "error", err, "revision", revision)
 		return nil, err
 	}
 
 	if err := ps.pictureRepo.UpdateLatestRevision(pictureID, revision.ID); err != nil {
-		slog.Error("could not add latest revision info", "error", err, "revision", revision)
+		slog.Error("could not update latest revision info", "error", err, "revision", revision)
 		return nil, err
 	}
 
 	return revision, nil
 }
 
-func (ps *pictureManagementService) ListLatestRevisions() ([]model.Revision, error) {
+func (ps *pictureManagementService) ListLatestRevisions(ctx context.Context) ([]model.Revision, error) {
 	revisions, err := ps.pictureRepo.ListLatestRevisions()
 	if err != nil {
 		slog.Error("could not list latest revisions", "error", err)
@@ -117,7 +117,7 @@ func (ps *pictureManagementService) ListLatestRevisions() ([]model.Revision, err
 	return revisions, nil
 }
 
-func (ps *pictureManagementService) ListAllPictures() ([]model.Picture, error) {
+func (ps *pictureManagementService) ListAllPictures(ctx context.Context) ([]model.Picture, error) {
 	pictures, err := ps.pictureRepo.ListAllPictures()
 	if err != nil {
 		slog.Error("could not list all pictures", "error", err)
@@ -131,10 +131,10 @@ func (ps *pictureManagementService) ListAllPictures() ([]model.Picture, error) {
 	return pictures, nil
 }
 
-func (ps *pictureManagementService) ListAllRevisions(pictureID string) ([]model.Revision, error) {
+func (ps *pictureManagementService) ListAllRevisions(ctx context.Context, pictureID string) ([]model.Revision, error) {
 	revisions, err := ps.pictureRepo.ListAllRevisions(pictureID)
 	if err != nil {
-		slog.Error("could not list all pictures", "error", err)
+		slog.Error("could not list all revisions", "error", err)
 		return nil, err
 	}
 

@@ -1,39 +1,47 @@
 package handler
 
 import (
-	"encoding/json"
 	"log/slog"
 	"net/http"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/mirai-box/mirai-box/internal/service"
 )
 
-func (h *PictureManagementHandler) ListPicturesHandler(w http.ResponseWriter, r *http.Request) {
-	pictures, err := h.service.ListAllPictures()
-	if err != nil {
-		slog.Error("Failed to list latest revisions of all files", "error", err)
-		http.Error(w, "Failed to list latest revisions", http.StatusInternalServerError)
-		return
-	}
+// PictureManagementHandler is a struct that holds a reference to the service layer
+type PictureManagementHandler struct {
+	service service.PictureManagementService
+}
 
-	w.WriteHeader(http.StatusOK)
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(pictures); err != nil {
-		slog.Error("Failed to encode result as json", "error", err, "pictures", pictures)
+// NewPictureManagementHandler creates a new PictureManagementHandler
+func NewPictureManagementHandler(svc service.PictureManagementService) *PictureManagementHandler {
+	return &PictureManagementHandler{
+		service: svc,
 	}
 }
 
-func (h *PictureManagementHandler) ListRevisionHandler(w http.ResponseWriter, r *http.Request) {
-	pictureID := r.PathValue("pictureID")
-
-	revisions, err := h.service.ListAllRevisions(pictureID)
+// ListPicturesHandler handles listing all pictures
+func (h *PictureManagementHandler) ListPicturesHandler(w http.ResponseWriter, r *http.Request) {
+	pictures, err := h.service.ListAllPictures(r.Context())
 	if err != nil {
-		slog.Error("Failed to list all revisions for a picture", "error", err, "pictureID", pictureID)
-		http.Error(w, "Failed to list all revisions for a picture", http.StatusInternalServerError)
+		slog.Error("Failed to list latest revisions of all files", "error", err)
+		respondWithError(w, http.StatusInternalServerError, "Failed to list latest revisions")
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(revisions); err != nil {
-		slog.Error("Failed to encode result as json", "error", err, "revisions", revisions)
+	respondJson(w, pictures)
+}
+
+// ListRevisionHandler handles listing all revisions for a picture
+func (h *PictureManagementHandler) ListRevisionHandler(w http.ResponseWriter, r *http.Request) {
+	pictureID := chi.URLParam(r, "pictureID")
+
+	revisions, err := h.service.ListAllRevisions(r.Context(), pictureID)
+	if err != nil {
+		slog.Error("Failed to list all revisions for a picture", "error", err, "pictureID", pictureID)
+		respondWithError(w, http.StatusInternalServerError, "Failed to list all revisions for a picture")
+		return
 	}
+
+	respondJson(w, revisions)
 }

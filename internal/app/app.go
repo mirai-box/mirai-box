@@ -54,6 +54,10 @@ func New(conf *config.Config) (*Application, error) {
 	galleryService := service.NewGalleryService(galleryRepo)
 	galleryHandler := handler.NewGalleryHandler(galleryService)
 
+	webPageRepo := repository.NewWebPageRepository(conn)
+	webPageService := service.NewWebPageService(webPageRepo)
+	webPageHandler := handler.NewWebPageHandler(webPageService)
+
 	mux := chi.NewRouter()
 
 	// A good base middleware stack
@@ -65,7 +69,7 @@ func New(conf *config.Config) (*Application, error) {
 
 	// Public Routes
 	mux.Get("/art/{artID}", pictureRetrievalHandler.SharedPictureHandler)
-	mux.Get("/galleries/{galleryID}", galleryHandler.GetGalleryByID)
+	mux.Get("/galleries/main", galleryHandler.GetMainGallery)
 	mux.Get("/galleries/{galleryID}/images", galleryHandler.GetImagesByGalleryIDHandler)
 
 	// Admin Routes
@@ -75,7 +79,7 @@ func New(conf *config.Config) (*Application, error) {
 		r.Get("/pictures", pictureManagementHandler.ListPicturesHandler)
 		r.Get("/pictures/{pictureID}", pictureRetrievalHandler.LatestFileDownloadHandler)
 		r.Get("/pictures/{pictureID}/revisions", pictureManagementHandler.ListRevisionHandler)
-		r.Get("/pictures/{pictureID}/revisions/{revisionID}", pictureRetrievalHandler.FleRevisionDownloadHandler)
+		r.Get("/pictures/{pictureID}/revisions/{revisionID}", pictureRetrievalHandler.FileRevisionDownloadHandler)
 		r.Post("/pictures/{pictureID}/revisions", pictureManagementHandler.AddRevisionHandler)
 		r.Post("/pictures/upload", pictureManagementHandler.UploadHandler)
 
@@ -83,6 +87,12 @@ func New(conf *config.Config) (*Application, error) {
 		r.Post("/galleries", galleryHandler.CreateGallery)
 		r.Post("/galleries/{galleryID}/images", galleryHandler.AddImageToGallery)
 		r.Post("/galleries/{galleryID}/publish", galleryHandler.PublishGallery)
+
+		r.Get("/pages", webPageHandler.ListWebPagesHandler)
+		r.Get("/pages/{id}", webPageHandler.GetWebPageHandler)
+		r.Post("/pages", webPageHandler.CreateWebPageHandler)
+		r.Put("/pages/{id}", webPageHandler.UpdateWebPageHandler)
+		r.Delete("/pages/{id}", webPageHandler.DeleteWebPageHandler)
 	})
 
 	mux.Post("/login", userHandler.LoginHandler)

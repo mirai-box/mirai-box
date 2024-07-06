@@ -32,9 +32,12 @@ func main() {
 	}
 	defer app.DB.Close()
 
-	if err := runMigrations(app.DB.DB, conf); err != nil {
+	appliedMigrations, err := runMigrations(app.DB.DB, conf)
+	if err != nil {
 		slog.Error("Failed to migrate the database", "error", err)
 		return
+	} else {
+		slog.Info("Migration completed", "appliedMigrations", appliedMigrations)
 	}
 
 	slog.Info("Start to listen on", "port", conf.Port)
@@ -43,28 +46,53 @@ func main() {
 	}
 }
 
-func runMigrations(instance *sql.DB, conf *config.Config) error {
+func runMigrations(instance *sql.DB, conf *config.Config) (int, error) {
 	driver, err := postgres.WithInstance(instance, &postgres.Config{})
 	if err != nil {
-		return err
+		return 0, fmt.Errorf("failed to create database driver: %w", err)
 	}
 
 	cwd := conf.ProjectRoot
-
 	migrationPath := filepath.Join(cwd, "migrations")
-
-	slog.Info("run database migration", "migrationPath", migrationPath, "database", conf.Database.Database)
-
 	dbMigrationPath := fmt.Sprintf("file://%s", migrationPath)
+
+	slog.Info("Running database migration",
+		"migrationPath", migrationPath,
+		"database", conf.Database.Database)
 
 	m, err := migrate.NewWithDatabaseInstance(dbMigrationPath, conf.Database.Database, driver)
 	if err != nil {
-		return err
+		return 0, fmt.Errorf("failed to create migration instance: %w", err)
 	}
 
-	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
-		return err
+	// Get the current version before migration
+	beforeVersion, _, err := m.Version()
+	if err != nil && err != migrate.ErrNilVersion {
+		return 0, fmt.Errorf("failed to get current migration version: %w", err)
 	}
 
-	return nil
+	// Run the migration
+	err = m.Up()
+	if err != nil && err != migrate.ErrNoChange {
+		return 0, fmt.Errorf("migration failed: %w", err)
+	}
+
+	// Get the version after migration
+	afterVersion, _, err := m.Version()
+	if err != nil {
+		return 0, fmt.Errorf("failed to get new migration version: %w", err)
+	}
+
+	appliedMigrations := int(afterVersion - beforeVersion)
+
+	if err == migrate.ErrNoChange {
+		slog.Info("No migrations applied, database is up to date")
+		return 0, nil
+	}
+
+	slog.Info("Database migration completed successfully",
+		"appliedMigrations", appliedMigrations,
+		"newVersion", afterVersion)
+
+	return appliedMigrations, nil
 }

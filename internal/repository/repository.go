@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"io"
 	"os"
 
@@ -8,7 +9,6 @@ import (
 )
 
 type PictureRepository interface {
-	SavePicture(picture *model.Picture) error
 	SaveRevision(revision *model.Revision) error
 	GetMaxRevisionVersion(pictureID string) (int, error)
 	ListLatestRevisions() ([]model.Revision, error)
@@ -18,6 +18,7 @@ type PictureRepository interface {
 	GetPictureByID(pictureID string) (*model.Picture, error)
 	UpdateLatestRevision(pictureID, revisionID string) error
 	ListAllPictures() ([]model.Picture, error)
+	SavePictureAndRevision(picture *model.Picture, revision *model.Revision) error
 }
 
 type StorageRepository interface {
@@ -31,10 +32,22 @@ type UserRepository interface {
 }
 
 type GalleryRepository interface {
-	CreateGallery(gallery *model.Gallery) error
-	AddImageToGallery(galleryID, revisionID string) error
-	PublishGallery(galleryID string) error
-	GetGalleryByID(galleryID string) (*model.Gallery, error)
-	ListGalleries() ([]model.Gallery, error)
-	GetImagesByGalleryID(galleryID string) ([]model.Revision, error) 
+	CreateGallery(ctx context.Context, gallery *model.Gallery) error
+	AddImageToGallery(ctx context.Context, galleryID, revisionID string) error
+	PublishGallery(ctx context.Context, galleryID string) error
+	GetGalleryByID(ctx context.Context, galleryID string) (*model.Gallery, error)
+	ListGalleries(ctx context.Context) ([]model.Gallery, error)
+	GetImagesByGalleryID(ctx context.Context, galleryID string) ([]model.Revision, error)
+	GetGalleryByTitle(ctx context.Context, title string) (*model.Gallery, error)
+	ListGallerisByType(ctx context.Context, galleryType string) ([]model.Gallery, error)
+}
+
+// WebPageRepository defines the operations for managing web pages.
+type WebPageRepository interface {
+	CreateWebPage(ctx context.Context, wp *model.WebPage) error
+	UpdateWebPage(ctx context.Context, wp *model.WebPage) error
+	DeleteWebPage(ctx context.Context, id string) error
+	GetWebPage(ctx context.Context, id string) (*model.WebPage, error)
+	ListWebPages(ctx context.Context) ([]model.WebPage, error)
+	ListWebPagesByType(ctx context.Context, webPageType string) ([]model.WebPage, error)
 }
