@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/sessions"
+	"github.com/mirai-box/mirai-box/internal/models"
 	"github.com/mirai-box/mirai-box/internal/service"
 )
 
@@ -33,14 +34,14 @@ func NewUserHandler(service service.UserService, sessionKey string) *UserHandler
 
 // AuthCheckHandler checks if the user is authenticated.
 func (h *UserHandler) AuthCheckHandler(w http.ResponseWriter, r *http.Request) {
-	session, err := h.store.Get(r, "session-name")
+	session, err := h.store.Get(r, models.SessionCookieName)
 	if err != nil {
 		slog.Error("AuthCheckHandler: failed to get session", "error", err)
 		respondWithError(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 
-	userID, ok := session.Values["user_id"]
+	userID, ok := session.Values[models.SessionUserIDKey]
 	if !ok {
 		slog.Error("AuthCheckHandler: unauthorized session")
 		respondWithError(w, http.StatusUnauthorized, "Unauthorized")
@@ -77,14 +78,14 @@ func (h *UserHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	session, err := h.store.Get(r, "session-name")
+	session, err := h.store.Get(r, models.SessionCookieName)
 	if err != nil {
 		slog.Error("LoginHandler: failed to get session", "error", err)
 		respondWithError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 
-	session.Values["user_id"] = user.ID
+	session.Values[models.SessionUserIDKey] = user.ID
 	if req.KeepSignedIn {
 		session.Options.MaxAge = 7 * 24 * 60 * 60 // 1 week
 	} else {
@@ -108,14 +109,14 @@ func (h *UserHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 // AuthMiddleware checks for a valid session and user role before allowing access to admin routes.
 func (h *UserHandler) AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		session, err := h.store.Get(r, "session-name")
+		session, err := h.store.Get(r, models.SessionCookieName)
 		if err != nil {
 			slog.Error("AuthMiddleware: failed to get session", "error", err)
 			respondWithError(w, http.StatusForbidden, "Forbidden")
 			return
 		}
 
-		userID, ok := session.Values["user_id"]
+		userID, ok := session.Values[models.SessionUserIDKey]
 		if !ok {
 			respondWithError(w, http.StatusForbidden, "Forbidden")
 			return

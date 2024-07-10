@@ -5,43 +5,85 @@ import (
 	"io"
 	"os"
 
-	"github.com/mirai-box/mirai-box/internal/model"
+	"github.com/mirai-box/mirai-box/internal/models"
 )
 
-type PictureManagementService interface {
-	CreatePictureAndRevision(ctx context.Context, fileData io.Reader, title, filename string) (*model.Picture, error)
-	AddRevision(ctx context.Context, pictureID string, fileData io.Reader, comment, filename string) (*model.Revision, error)
-	ListLatestRevisions(ctx context.Context) ([]model.Revision, error)
-	ListAllPictures(ctx context.Context) ([]model.Picture, error)
-	ListAllRevisions(ctx context.Context, pictureID string) ([]model.Revision, error)
+// ArtProjectRetrievalServiceInterface defines the interface for retrieving art projects and revisions.
+type ArtProjectRetrievalServiceInterface interface {
+	GetSharedArtProject(ctx context.Context, userID, artID string) (*os.File, *models.ArtProject, error)
+	GetArtProjectByRevision(ctx context.Context, userID, artProjectID, revisionID string) (*os.File, *models.ArtProject, error)
+	GetArtProjectByID(ctx context.Context, userID, artProjectID string) (*os.File, *models.ArtProject, error)
 }
 
-type PictureRetrievalService interface {
-	GetPictureByRevision(ctx context.Context, pictureID, revisionID string) (*os.File, *model.Picture, error)
-	GetPictureByID(ctx context.Context, pictureID string) (*os.File, *model.Picture, error)
-	GetSharedPicture(ctx context.Context, artID string) (*os.File, *model.Picture, error)
+// ArtProjectManagementServiceInterface defines the interface for managing art projects and revisions.
+type ArtProjectManagementServiceInterface interface {
+	CreateArtProjectAndRevision(ctx context.Context, userID string, fileData io.Reader, title, filename string) (*models.ArtProject, error)
+	AddRevision(ctx context.Context, userID, artProjectID string, fileData io.Reader, comment, filename string) (*models.Revision, error)
+	ListLatestRevisions(ctx context.Context, userID string) ([]models.Revision, error)
+	ListAllArtProjects(ctx context.Context, userID string) ([]models.ArtProject, error)
+	ListAllRevisions(ctx context.Context, artProjectID string) ([]models.Revision, error)
 }
 
-type UserService interface {
-	Authenticate(ctx context.Context, username, password string) (*model.User, error)
-	FindByID(ctx context.Context, id string) (*model.User, error)
+// ArtProjectServiceInterface defines the interface for managing art projects.
+type ArtProjectServiceInterface interface {
+	FindByUserID(ctx context.Context, userID string) ([]models.ArtProject, error)
+	CreateArtProject(ctx context.Context, stashID, title string) (*models.ArtProject, error)
+	FindByID(ctx context.Context, id string) (*models.ArtProject, error)
+	FindByStashID(ctx context.Context, stashID string) ([]models.ArtProject, error)
 }
 
-type GalleryService interface {
-	CreateGallery(ctx context.Context, title string) (*model.Gallery, error)
-	AddImageToGallery(ctx context.Context, galleryID, revisionID string) (*model.Gallery, error)
-	PublishGallery(ctx context.Context, galleryID string) error
-	GetGalleryByID(ctx context.Context, galleryID string) (*model.Gallery, error)
-	ListGalleries(ctx context.Context) ([]model.Gallery, error)
-	GetImagesByGalleryID(ctx context.Context, galleryID string) ([]model.Revision, error)
-	GetMainGallery(ctx context.Context) ([]model.Revision, error)
+// CollectionArtProjectServiceInterface defines the interface for managing collection art projects.
+type CollectionArtProjectServiceInterface interface {
+	AddArtProjectToCollection(ctx context.Context, collectionID, artProjectID string) (*models.CollectionArtProject, error)
+	FindByCollectionID(ctx context.Context, collectionID string) ([]models.CollectionArtProject, error)
+	FindByArtProjectID(ctx context.Context, artProjectID string) ([]models.CollectionArtProject, error)
 }
 
-type WebPageService interface {
-	CreateWebPage(ctx context.Context, title, html string) (*model.WebPage, error)
-	UpdateWebPage(ctx context.Context, id, title, html string) (*model.WebPage, error)
+// CollectionServiceInterface defines the interface for managing collections.
+type CollectionServiceInterface interface {
+	CreateCollection(ctx context.Context, userID, title string) (*models.Collection, error)
+	FindByID(ctx context.Context, id string) (*models.Collection, error)
+	FindByUserID(ctx context.Context, userID string) ([]models.Collection, error)
+}
+
+// RevisionServiceInterface defines the interface for managing revisions.
+type RevisionServiceInterface interface {
+	CreateRevision(ctx context.Context, artProjectID, filePath, comment string, version int, size int64) (*models.Revision, error)
+	FindByID(ctx context.Context, id string) (*models.Revision, error)
+	FindByArtProjectID(ctx context.Context, artProjectID string) ([]models.Revision, error)
+}
+
+// SaleServiceInterface defines the contract for sale-related operations
+type SaleServiceInterface interface {
+	CreateSale(ctx context.Context, artProjectID, userID string, price float64) (*models.Sale, error)
+	FindByID(ctx context.Context, id string) (*models.Sale, error)
+	FindByUserID(ctx context.Context, userID string) ([]models.Sale, error)
+	FindByArtProjectID(ctx context.Context, artProjectID string) ([]models.Sale, error)
+}
+
+// WebPageServiceInterface defines the contract for web page-related operations
+type WebPageServiceInterface interface {
+	CreateWebPage(ctx context.Context, webPage *models.WebPage) (*models.WebPage, error)
+	UpdateWebPage(ctx context.Context, webPage *models.WebPage) (*models.WebPage, error)
 	DeleteWebPage(ctx context.Context, id string) error
-	GetWebPage(ctx context.Context, id string) (*model.WebPage, error)
-	ListWebPages(ctx context.Context) ([]model.WebPage, error)
-	ListWebPagesByType(ctx context.Context, webPagesType string) ([]model.WebPage, error)
+	GetWebPage(ctx context.Context, id string) (*models.WebPage, error)
+	ListWebPages(ctx context.Context) ([]models.WebPage, error)
+	ListUserWebPages(ctx context.Context, userID string) ([]models.WebPage, error)
+	ListWebPagesByType(ctx context.Context, pageType string) ([]models.WebPage, error)
+}
+
+// UserServiceInterface defines the contract for user-related operations
+type UserServiceInterface interface {
+	Authenticate(ctx context.Context, username, password string) (*models.User, error)
+	FindByID(ctx context.Context, id string) (*models.User, error)
+	CreateUser(ctx context.Context, username, password, role string) (*models.User, error)
+	UpdateUser(ctx context.Context, user *models.User) (*models.User, error)
+	DeleteUser(ctx context.Context, id string) error
+}
+
+// StashServiceInterface defines the contract for stash-related operations
+type StashServiceInterface interface {
+	CreateStash(ctx context.Context, userID string) (*models.Stash, error)
+	FindByID(ctx context.Context, id string) (*models.Stash, error)
+	FindByUserID(ctx context.Context, userID string) (*models.Stash, error)
 }

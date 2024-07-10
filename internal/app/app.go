@@ -5,13 +5,14 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/go-chi/cors"
-	"github.com/jmoiron/sqlx"
+	"github.com/gorilla/sessions"
+	"github.com/rs/cors"
+	"gorm.io/gorm"
 
 	"github.com/mirai-box/mirai-box/internal/config"
-	"github.com/mirai-box/mirai-box/internal/database"
-	"github.com/mirai-box/mirai-box/internal/handler"
-	"github.com/mirai-box/mirai-box/internal/repository"
+	"github.com/mirai-box/mirai-box/internal/handlers"
+	authmiddleware "github.com/mirai-box/mirai-box/internal/middleware"
+	"github.com/mirai-box/mirai-box/internal/repos"
 	"github.com/mirai-box/mirai-box/internal/service"
 )
 
@@ -24,82 +25,139 @@ var corsConfig = cors.New(cors.Options{
 	MaxAge:           300,
 })
 
-// Application contains the components of your application.
-type Application struct {
-	Router http.Handler
-	DB     *sqlx.DB
-}
+func SetupRoutes(db *gorm.DB, conf *config.Config) http.Handler {
+	r := chi.NewRouter()
 
-// New initializes the application with all its dependencies.
-func New(conf *config.Config) (*Application, error) {
-	conn, err := database.NewConnection(conf)
-	if err != nil {
-		return nil, err
-	}
+	// Middleware
+	r.Use(middleware.Logger)
+	r.Use(middleware.Recoverer)
+	r.Use(corsConfig.Handler)
 
-	userRepo := repository.NewSQLUserRepository(conn)
+	// Initialize repositories
+	storageRepo := repos.NewStorageRepository(conf.StorageRoot)
+	userRepo := repos.NewUserRepository(db)
+	stashRepo := repos.NewStashRepository(db)
+	artProjectRepo := repos.NewArtProjectRepository(db)
+	revisionRepo := repos.NewRevisionRepository(db)
+	collectionRepo := repos.NewCollectionRepository(db)
+	collectionArtProjectRepo := repos.NewCollectionArtProjectRepository(db)
+	saleRepo := repos.NewSaleRepository(db)
+	storageUsageRepo := repos.NewStorageUsageRepository(db)
+	webPageRepo := repos.NewWebPageRepository(db)
+
+	// Initialize services
 	userService := service.NewUserService(userRepo)
-	userHandler := handler.NewUserHandler(userService, conf.SessionKey)
-
-	pictureRepo := repository.NewPictureRepository(conn)
-	storageRepo := repository.NewStorageRepository(conf.StorageRoot)
-
-	pictureManagementService := service.NewPictureManagementService(pictureRepo, storageRepo)
-	pictureRetrievalService := service.NewPictureRetrievalService(pictureRepo, storageRepo)
-
-	pictureRetrievalHandler := handler.NewPictureRetrievalHandler(pictureRetrievalService)
-	pictureManagementHandler := handler.NewPictureManagementHandler(pictureManagementService)
-
-	galleryRepo := repository.NewSQLGalleryRepository(conn)
-	galleryService := service.NewGalleryService(galleryRepo)
-	galleryHandler := handler.NewGalleryHandler(galleryService)
-
-	webPageRepo := repository.NewWebPageRepository(conn)
+	stashService := service.NewStashService(stashRepo)
+	artProjectService := service.NewArtProjectService(artProjectRepo, stashRepo)
+	revisionService := service.NewRevisionService(revisionRepo)
+	collectionService := service.NewCollectionService(collectionRepo)
+	collectionArtProjectService := service.NewCollectionArtProjectService(collectionArtProjectRepo)
+	saleService := service.NewSaleService(saleRepo)
+	storageUsageService := service.NewStorageUsageService(storageUsageRepo)
 	webPageService := service.NewWebPageService(webPageRepo)
-	webPageHandler := handler.NewWebPageHandler(webPageService)
+	artProjectManagementService := service.NewArtProjectManagementService(artProjectRepo, storageRepo, stashRepo)
+	cookieStore := sessions.NewCookieStore([]byte(conf.SessionKey))
+	m := authmiddleware.NewMiddleware(cookieStore, userService)
 
-	mux := chi.NewRouter()
+	// Initialize handlers
+	userHandler := handlers.NewUserHandler(userService, stashService, cookieStore)
+	stashHandler := handlers.NewStashHandler(stashService)
+	artProjectHandler := handlers.NewArtProjectHandler(artProjectService)
+	artProjectManagementHandler := *handlers.NewArtProjectManagementHandler(artProjectManagementService, artProjectService)
+	revisionHandler := handlers.NewRevisionHandler(revisionService)
+	collectionHandler := handlers.NewCollectionHandler(collectionService)
+	collectionArtProjectHandler := handlers.NewCollectionArtProjectHandler(collectionArtProjectService)
+	saleHandler := handlers.NewSaleHandler(saleService)
+	storageUsageHandler := handlers.NewStorageUsageHandler(storageUsageService)
+	webPageHandler := handlers.NewWebPageHandler(webPageService)
 
-	// A good base middleware stack
-	mux.Use(middleware.RequestID)
-	mux.Use(middleware.RealIP)
-	mux.Use(middleware.Logger)
-	mux.Use(middleware.Recoverer)
-	mux.Use(corsConfig.Handler)
+	r.Post("/login", userHandler.Login)
+	r.Get("/login/check", userHandler.LoginCheck)
 
-	// Public Routes
-	mux.Get("/art/{artID}", pictureRetrievalHandler.SharedPictureHandler)
-	mux.Get("/galleries/main", galleryHandler.GetMainGallery)
-	mux.Get("/galleries/{galleryID}/images", galleryHandler.GetImagesByGalleryIDHandler)
+	r.Route("/self", func(r chi.Router) {
+		r.Use(m.AuthMiddleware)
+		r.Use(m.RequireRole("self", "any"))
 
-	// Admin Routes
-	mux.Route("/stash", func(r chi.Router) {
-		r.Use(userHandler.AuthMiddleware) // Middleware for protecting admin routes
+		r.Get("/stash", stashHandler.MyStash)
+		r.Get("/sales", saleHandler.MySales)
 
-		r.Get("/pictures", pictureManagementHandler.ListPicturesHandler)
-		r.Get("/pictures/{pictureID}", pictureRetrievalHandler.LatestFileDownloadHandler)
-		r.Get("/pictures/{pictureID}/revisions", pictureManagementHandler.ListRevisionHandler)
-		r.Get("/pictures/{pictureID}/revisions/{revisionID}", pictureRetrievalHandler.FileRevisionDownloadHandler)
-		r.Post("/pictures/{pictureID}/revisions", pictureManagementHandler.AddRevisionHandler)
-		r.Post("/pictures/upload", pictureManagementHandler.UploadHandler)
+		r.Post("/webpages", webPageHandler.CreateWebPage)
+		r.Get("/webpages", webPageHandler.MyWebPages)
+		r.Get("/webpages/{id}", webPageHandler.MyWebPageByID)
+		r.Put("/webpages/{id}", webPageHandler.UpdateWebPage)
 
-		r.Get("/galleries", galleryHandler.ListGalleries)
-		r.Post("/galleries", galleryHandler.CreateGallery)
-		r.Post("/galleries/{galleryID}/images", galleryHandler.AddImageToGallery)
-		r.Post("/galleries/{galleryID}/publish", galleryHandler.PublishGallery)
+		r.Get("/artprojects", artProjectManagementHandler.MyArtProjects)
+		r.Get("/artprojects/{id}", artProjectManagementHandler.MyArtProjectByID)
+		r.Post("/artprojects/{id}/revision", artProjectManagementHandler.AddRevision)
+		r.Post("/artprojects", artProjectManagementHandler.CreateArtProject)
 
-		r.Get("/pages", webPageHandler.ListWebPagesHandler)
-		r.Get("/pages/{id}", webPageHandler.GetWebPageHandler)
-		r.Post("/pages", webPageHandler.CreateWebPageHandler)
-		r.Put("/pages/{id}", webPageHandler.UpdateWebPageHandler)
-		r.Delete("/pages/{id}", webPageHandler.DeleteWebPageHandler)
+		// r.Get("/collections", collectionHandler.MyCollections)
+		// r.Get("/storage", storageUsageHandler.MyStorageUsage)
 	})
 
-	mux.Post("/login", userHandler.LoginHandler)
-	mux.Get("/auth/check", userHandler.AuthCheckHandler)
+	// Routes
+	r.Route("/api", func(r chi.Router) {
+		// Public routes
+		r.Post("/users", userHandler.CreateUser)
 
-	return &Application{
-		Router: mux,
-		DB:     conn,
-	}, nil
+		r.Group(func(r chi.Router) {
+			r.Use(m.RequireRole("any"))
+			r.Post("/webpages", webPageHandler.CreateWebPage)
+		})
+
+		r.Group(func(r chi.Router) {
+			r.Use(m.RequireRole("admin"))
+
+			// User routes
+			r.Get("/users/{id}", userHandler.GetUser)
+			r.Put("/users/{id}", userHandler.UpdateUser)
+			r.Delete("/users/{id}", userHandler.DeleteUser)
+
+			// Stash routes
+			r.Get("/stashes/{id}", stashHandler.FindByID)
+			r.Get("/users/{userId}/stash", stashHandler.FindByUserID)
+
+			// ArtProject routes
+			r.Post("/artprojects", artProjectHandler.CreateArtProject)
+			r.Get("/artprojects/{id}", artProjectHandler.GetArtProject)
+			r.Put("/artprojects/{id}", artProjectHandler.UpdateArtProject)
+			r.Delete("/artprojects/{id}", artProjectHandler.DeleteArtProject)
+			r.Get("/stashes/{stashId}/artprojects", artProjectHandler.ListStashArtProjects)
+
+			// Revision routes
+			r.Post("/artprojects/{artProjectId}/revisions", revisionHandler.CreateRevision)
+			r.Get("/revisions/{id}", revisionHandler.GetRevision)
+			r.Get("/artprojects/{artProjectId}/revisions", revisionHandler.ListArtProjectRevisions)
+
+			// Collection routes
+			r.Post("/collections", collectionHandler.CreateCollection)
+			r.Get("/collections/{id}", collectionHandler.GetCollection)
+			r.Put("/collections/{id}", collectionHandler.UpdateCollection)
+			r.Delete("/collections/{id}", collectionHandler.DeleteCollection)
+			r.Get("/users/{userId}/collections", collectionHandler.ListUserCollections)
+
+			// CollectionArtProject routes
+			r.Post("/collections/{collectionId}/artprojects/{artProjectId}", collectionArtProjectHandler.AddArtProjectToCollection)
+			r.Delete("/collections/{collectionId}/artprojects/{artProjectId}", collectionArtProjectHandler.RemoveArtProjectFromCollection)
+			r.Get("/collections/{collectionId}/artprojects", collectionArtProjectHandler.ListCollectionArtProjects)
+
+			// Sale routes
+			r.Post("/sales", saleHandler.CreateSale)
+			r.Get("/sales/{id}", saleHandler.GetSale)
+			r.Get("/users/{userId}/sales", saleHandler.ListUserSales)
+			r.Get("/artprojects/{artProjectId}/sales", saleHandler.ListArtProjectSales)
+
+			// StorageUsage routes
+			r.Get("/users/{userId}/storage", storageUsageHandler.GetUserStorageUsage)
+			r.Put("/users/{userId}/storage", storageUsageHandler.UpdateUserStorageUsage)
+
+			// WebPage routes
+			// r.Post("/webpages", webPageHandler.CreateWebPage)
+			r.Get("/webpages/{id}", webPageHandler.GetWebPage)
+			r.Delete("/webpages/{id}", webPageHandler.DeleteWebPage)
+			r.Get("/users/{userId}/webpages", webPageHandler.ListUserWebPages)
+		})
+	})
+
+	return r
 }
