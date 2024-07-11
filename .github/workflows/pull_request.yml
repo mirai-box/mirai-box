@@ -1,0 +1,24 @@
+name: Checks on PR
+
+on:
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22.x'
+      - name: Install dependencies
+        run: make init
+      - name: Build
+        run: go build -v ./...
+      - name: Unit tests
+        run: make test/unit
+      - name: Integration tests
+        run: make test/integration

@@ -2,7 +2,6 @@ package service
 
 import (
 	"crypto/rand"
-	"encoding/base64"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -64,14 +63,4 @@ func DecodeArtID(artID string, secretKey []byte) (string, string, error) {
 	}
 
 	return data[0], data[1], nil
-}
-
-// Generate a secure token
-func GenerateSecureToken(n int) (string, error) {
-	b := make([]byte, n)
-	_, err := rand.Read(b)
-	if err != nil {
-		return "", err
-	}
-	return base64.URLEncoding.EncodeToString(b), nil
 }
