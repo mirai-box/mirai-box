@@ -57,6 +57,8 @@ func SetupRoutes(db *gorm.DB, conf *config.Config) http.Handler {
 	webPageService := service.NewWebPageService(webPageRepo)
 	artProjectManagementService := service.NewArtProjectManagementService(artProjectRepo, storageRepo, stashRepo)
 	cookieStore := sessions.NewCookieStore([]byte(conf.SessionKey))
+	artProjectRetrievalService := service.NewArtProjectRetrievalService(artProjectRepo, storageRepo)
+
 	m := authmiddleware.NewMiddleware(cookieStore, userService)
 
 	// Initialize handlers
@@ -70,9 +72,11 @@ func SetupRoutes(db *gorm.DB, conf *config.Config) http.Handler {
 	saleHandler := handlers.NewSaleHandler(saleService)
 	storageUsageHandler := handlers.NewStorageUsageHandler(storageUsageService)
 	webPageHandler := handlers.NewWebPageHandler(webPageService)
+	artProjectRetrievalHandler := handlers.NewArtProjectRetrievalHandler(artProjectRetrievalService)
 
 	r.Post("/login", userHandler.Login)
 	r.Get("/login/check", userHandler.LoginCheck)
+	r.Get("/art/{artID}", artProjectRetrievalHandler.SharedPictureHandler)
 
 	r.Route("/self", func(r chi.Router) {
 		r.Use(m.AuthMiddleware)
@@ -88,8 +92,12 @@ func SetupRoutes(db *gorm.DB, conf *config.Config) http.Handler {
 
 		r.Get("/artprojects", artProjectManagementHandler.MyArtProjects)
 		r.Get("/artprojects/{id}", artProjectManagementHandler.MyArtProjectByID)
-		r.Post("/artprojects/{id}/revision", artProjectManagementHandler.AddRevision)
+
+		r.Get("/artprojects/{id}/revisions", artProjectManagementHandler.ListRevisions)
+		r.Post("/artprojects/{id}/revisions", artProjectManagementHandler.AddRevision)
+
 		r.Post("/artprojects", artProjectManagementHandler.CreateArtProject)
+		r.Get("/artprojects/{artID}/revisions/{revisionID}", artProjectRetrievalHandler.RevisionDownload)
 
 		// r.Get("/collections", collectionHandler.MyCollections)
 		// r.Get("/storage", storageUsageHandler.MyStorageUsage)
@@ -119,7 +127,7 @@ func SetupRoutes(db *gorm.DB, conf *config.Config) http.Handler {
 
 			// ArtProject routes
 			r.Post("/artprojects", artProjectHandler.CreateArtProject)
-			r.Get("/artprojects/{id}", artProjectHandler.GetArtProject)
+			// r.Get("/artprojects/{id}", artProjectHandler.GetArtProject)
 			r.Put("/artprojects/{id}", artProjectHandler.UpdateArtProject)
 			r.Delete("/artprojects/{id}", artProjectHandler.DeleteArtProject)
 			r.Get("/stashes/{stashId}/artprojects", artProjectHandler.ListStashArtProjects)
@@ -161,3 +169,26 @@ func SetupRoutes(db *gorm.DB, conf *config.Config) http.Handler {
 
 	return r
 }
+
+// // Public Routes
+// mux.Get("/art/{artID}", pictureRetrievalHandler.SharedPictureHandler)
+// mux.Get("/galleries/main", galleryHandler.GetMainGallery)
+// mux.Get("/galleries/{galleryID}/images", galleryHandler.GetImagesByGalleryIDHandler)
+// // Admin Routes
+// mux.Route("/stash", func(r chi.Router) {
+// 	r.Use(userHandler.AuthMiddleware) // Middleware for protecting admin routes
+// 	r.Get("/pictures", pictureManagementHandler.ListPicturesHandler)
+// 	r.Get("/pictures/{pictureID}", pictureRetrievalHandler.LatestFileDownloadHandler)
+// 	r.Get("/pictures/{pictureID}/revisions", pictureManagementHandler.ListRevisionHandler)
+// 	r.Get("/pictures/{pictureID}/revisions/{revisionID}", pictureRetrievalHandler.FileRevisionDownloadHandler)
+// 	r.Post("/pictures/{pictureID}/revisions", pictureManagementHandler.AddRevisionHandler)
+// 	r.Post("/pictures/upload", pictureManagementHandler.UploadHandler)
+// 	r.Get("/galleries", galleryHandler.ListGalleries)
+// 	r.Post("/galleries", galleryHandler.CreateGallery)
+// 	r.Post("/galleries/{galleryID}/images", galleryHandler.AddImageToGallery)
+// 	r.Post("/galleries/{galleryID}/publish", galleryHandler.PublishGallery)
+// 	r.Get("/pages", webPageHandler.ListWebPagesHandler)
+// 	r.Get("/pages/{id}", webPageHandler.GetWebPageHandler)
+// 	r.Post("/pages", webPageHandler.CreateWebPageHandler)
+// 	r.Put("/pages/{id}", webPageHandler.UpdateWebPageHandler)
+// 	r.Delete("/pages/{id}", webPageHandler.DeleteWebPageHandler)

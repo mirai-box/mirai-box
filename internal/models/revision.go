@@ -8,6 +8,7 @@ import (
 
 type Revision struct {
 	ID           uuid.UUID  `gorm:"type:uuid;default:uuid_generate_v4();primary_key" json:"id"`
+	ArtID        uuid.UUID  `gorm:"type:uuid;default:uuid_generate_v4()" json:"art_id"`
 	ArtProjectID uuid.UUID  `gorm:"type:uuid;not null" json:"art_project_id"`
 	Version      int        `gorm:"type:int" json:"version"`
 	FilePath     string     `gorm:"type:varchar(255);not null" json:"file_path"`

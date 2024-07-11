@@ -21,6 +21,8 @@ type ArtProject struct {
 	// Category            Category  `gorm:"foreignKey:CategoryID" json:"category"`
 	StashID uuid.UUID `gorm:"type:uuid;not null" json:"stash_id"`
 	Stash   Stash     `gorm:"foreignKey:StashID;constraint:OnDelete:CASCADE" json:"-"`
+	UserID  uuid.UUID `gorm:"type:uuid;not null" json:"user_id"`
+	User    User      `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE" json:"-"`
 }
 
 type Category struct {

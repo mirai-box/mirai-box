@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -9,7 +10,9 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+
 	"github.com/mirai-box/mirai-box/internal/middleware"
+	"github.com/mirai-box/mirai-box/internal/models"
 	"github.com/mirai-box/mirai-box/internal/service"
 )
 
@@ -63,6 +66,41 @@ func (p *ArtProjectManagementHandler) AddRevision(w http.ResponseWriter, r *http
 	})
 }
 
+func (h *ArtProjectManagementHandler) ListRevisions(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	slog.DebugContext(ctx, "ListRevisions is called")
+
+	user, ok := middleware.GetUserFromContext(ctx)
+	if !ok {
+		slog.ErrorContext(ctx, "unauthorized user")
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	artID := chi.URLParam(r, "id")
+
+	slog.InfoContext(ctx, "list all revisions for an art project", "artID", artID, "userID", user.ID)
+
+	revisions, err := h.managmentService.ListAllRevisions(ctx, artID)
+	if err != nil {
+		slog.ErrorContext(ctx, "Failed to find all revisions for art project", "error", err, "artID", artID)
+		http.Error(w, "Failed to find all revisions for art project", http.StatusInternalServerError)
+		return
+	}
+
+	if revisions[0].ArtProject.UserID != user.ID {
+		slog.ErrorContext(ctx, "user and ArtProject user are not the same",
+			"userID", user.ID,
+			"artProject.Stash.UserID", revisions[0].ArtProject.UserID,
+		)
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(revisions)
+}
+
 func (h *ArtProjectManagementHandler) handleFileUpload(w http.ResponseWriter, r *http.Request, processFile func(io.Reader, *multipart.FileHeader) (interface{}, error)) {
 	r.ParseMultipartForm(10 << 20) // Limit file size to 10MB
 
@@ -76,6 +114,11 @@ func (h *ArtProjectManagementHandler) handleFileUpload(w http.ResponseWriter, r 
 
 	result, err := processFile(file, handler)
 	if err != nil {
+		var notFoundErr *models.ErrNotFound
+		if errors.As(err, &notFoundErr) {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
 		slog.Error("Failed to process file upload", "error", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -107,22 +150,33 @@ func (h *ArtProjectManagementHandler) MyArtProjects(w http.ResponseWriter, r *ht
 }
 
 func (h *ArtProjectManagementHandler) MyArtProjectByID(w http.ResponseWriter, r *http.Request) {
-	user, ok := middleware.GetUserFromContext(r.Context())
+	ctx := r.Context()
+	slog.DebugContext(ctx, "MyArtProjectByID is called")
+
+	user, ok := middleware.GetUserFromContext(ctx)
 	if !ok {
+		slog.ErrorContext(ctx, "unauthorized user")
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-
 	artID := chi.URLParam(r, "id")
 
-	artProject, err := h.artService.FindByID(r.Context(), artID)
+	slog.InfoContext(ctx, "getting art project", "artID", artID, "userID", user.ID)
+
+	artProject, err := h.artService.FindByID(ctx, artID)
 	if err != nil {
-		slog.Error("Failed to find user's art project", "error", err, "artID", artID)
+		slog.ErrorContext(ctx, "Failed to find user's art project", "error", err, "artID", artID)
 		http.Error(w, "Failed to find user's art project", http.StatusInternalServerError)
 		return
 	}
 
-	if artProject.Stash.UserID != user.ID {
+	slog.Info("found art project", "artID", artProject.ID, "userID", user.ID)
+
+	if artProject.UserID != user.ID {
+		slog.ErrorContext(ctx, "user and artProject user are not the same",
+			"userID", user.ID,
+			"artProject.UserID", artProject.Stash.UserID,
+		)
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}

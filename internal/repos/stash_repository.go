@@ -33,25 +33,29 @@ func (r *StashRepository) Create(ctx context.Context, stash *models.Stash) error
 // FindByID retrieves a stash by its ID
 func (r *StashRepository) FindByID(ctx context.Context, id string) (*models.Stash, error) {
 	slog.InfoContext(ctx, "Finding stash by ID", "stashID", id)
+
 	var stash models.Stash
 	err := r.DB.Preload("User").First(&stash, "id = ?", id).Error
 	if err != nil {
 		slog.ErrorContext(ctx, "Failed to find stash by ID", "error", err, "stashID", id)
 		return nil, err
 	}
+
 	slog.InfoContext(ctx, "Stash found successfully", "stashID", id)
 	return &stash, nil
 }
 
 // FindByUserID retrieves a stash by user ID
 func (r *StashRepository) FindByUserID(ctx context.Context, userID string) (*models.Stash, error) {
-	slog.InfoContext(ctx, "Finding stash by user ID", "userID", userID)
+	slog.InfoContext(ctx, "StashRepository: Finding stash by userID", "userID", userID)
+
 	var stash models.Stash
 	err := r.DB.Preload("User").First(&stash, "user_id = ?", userID).Error
 	if err != nil {
 		slog.ErrorContext(ctx, "Failed to find stash by user ID", "error", err, "userID", userID)
 		return nil, err
 	}
+
 	slog.InfoContext(ctx, "Stash found successfully", "userID", userID, "stashID", stash.ID)
 	return &stash, nil
 }

@@ -10,7 +10,7 @@ import (
 
 // ArtProjectRetrievalServiceInterface defines the interface for retrieving art projects and revisions.
 type ArtProjectRetrievalServiceInterface interface {
-	GetSharedArtProject(ctx context.Context, userID, artID string) (*os.File, *models.ArtProject, error)
+	GetSharedArtProject(ctx context.Context, artID string) (*os.File, *models.ArtProject, error)
 	GetArtProjectByRevision(ctx context.Context, userID, artProjectID, revisionID string) (*os.File, *models.ArtProject, error)
 	GetArtProjectByID(ctx context.Context, userID, artProjectID string) (*os.File, *models.ArtProject, error)
 }

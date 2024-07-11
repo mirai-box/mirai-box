@@ -25,8 +25,8 @@ func NewArtProjectRetrievalService(artProjectRepo repos.ArtProjectRepositoryInte
 }
 
 // GetSharedArtProject retrieves the latest shared revision of an art project
-func (aps *ArtProjectRetrievalService) GetSharedArtProject(ctx context.Context, userID, artID string) (*os.File, *models.ArtProject, error) {
-	slog.InfoContext(ctx, "Retrieving shared art project", "artID", artID, "userID", userID)
+func (aps *ArtProjectRetrievalService) GetSharedArtProject(ctx context.Context, artID string) (*os.File, *models.ArtProject, error) {
+	slog.InfoContext(ctx, "Retrieving shared art project", "artID", artID)
 
 	rev, err := aps.artProjectRepo.GetRevisionByArtID(ctx, artID)
 	if err != nil {
@@ -39,6 +39,8 @@ func (aps *ArtProjectRetrievalService) GetSharedArtProject(ctx context.Context, 
 		slog.ErrorContext(ctx, "Failed to get art project", "error", err, "artProjectID", rev.ArtProjectID)
 		return nil, nil, err
 	}
+
+	userID := artProject.Stash.UserID.String()
 
 	file, err := aps.storageRepo.GetRevision(ctx, userID, artProject.ID.String(), rev.Version)
 	if err != nil {

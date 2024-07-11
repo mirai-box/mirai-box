@@ -2,6 +2,7 @@ package repos
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 
 	"github.com/mirai-box/mirai-box/internal/models"
@@ -34,11 +35,13 @@ func (r *ArtProjectRepository) Create(ctx context.Context, artProject *models.Ar
 // FindByID retrieves an art project by its ID
 func (r *ArtProjectRepository) FindByID(ctx context.Context, id string) (*models.ArtProject, error) {
 	slog.InfoContext(ctx, "Finding art project by ID", "projectID", id)
+
 	var artProject models.ArtProject
-	if err := r.DB.First(&artProject, "id = ?", id).Error; err != nil {
+	if err := r.DB.Preload("Stash").First(&artProject, "id = ?", id).Error; err != nil {
 		slog.ErrorContext(ctx, "Failed to find art project", "error", err, "projectID", id)
 		return nil, err
 	}
+
 	slog.InfoContext(ctx, "Art project found", "projectID", id)
 	return &artProject, nil
 }
@@ -98,7 +101,7 @@ func (r *ArtProjectRepository) UpdateLatestRevision(ctx context.Context, artProj
 func (r *ArtProjectRepository) ListLatestRevisions(ctx context.Context, userID string) ([]models.Revision, error) {
 	slog.InfoContext(ctx, "Listing latest revisions for all art projects")
 	var revisions []models.Revision
-	if err := r.DB.Raw(`
+	if err := r.DB.Preload("ArtProject").Raw(`
         SELECT r.*
         FROM revisions r
         JOIN art_projects a ON a.latest_revision_id = r.id
@@ -127,11 +130,14 @@ func (r *ArtProjectRepository) ListAllArtProjects(ctx context.Context, userID st
 // ListAllRevisions retrieves all revisions for a specific art project
 func (r *ArtProjectRepository) ListAllRevisions(ctx context.Context, artProjectID string) ([]models.Revision, error) {
 	slog.InfoContext(ctx, "Listing all revisions for art project", "projectID", artProjectID)
+
 	var revisions []models.Revision
-	if err := r.DB.Where("art_project_id = ?", artProjectID).Find(&revisions).Error; err != nil {
+	if err := r.DB.Preload("ArtProject").
+		Where("art_project_id = ?", artProjectID).Find(&revisions).Error; err != nil {
 		slog.ErrorContext(ctx, "Failed to list all revisions for art project", "error", err, "projectID", artProjectID)
 		return nil, err
 	}
+
 	slog.InfoContext(ctx, "All revisions retrieved successfully", "projectID", artProjectID, "count", len(revisions))
 	return revisions, nil
 }
@@ -152,7 +158,7 @@ func (r *ArtProjectRepository) GetMaxRevisionVersion(ctx context.Context, artPro
 func (r *ArtProjectRepository) GetRevisionByArtID(ctx context.Context, artID string) (*models.Revision, error) {
 	slog.InfoContext(ctx, "Getting revision by art ID", "artID", artID)
 	var revision models.Revision
-	if err := r.DB.First(&revision, "art_id = ?", artID).Error; err != nil {
+	if err := r.DB.Preload("ArtProject").First(&revision, "art_id = ?", artID).Error; err != nil {
 		slog.ErrorContext(ctx, "Failed to get revision by art ID", "error", err, "artID", artID)
 		return nil, err
 	}
@@ -164,7 +170,7 @@ func (r *ArtProjectRepository) GetRevisionByArtID(ctx context.Context, artID str
 func (r *ArtProjectRepository) GetRevisionByID(ctx context.Context, id string) (*models.Revision, error) {
 	slog.InfoContext(ctx, "Getting revision by ID", "revisionID", id)
 	var revision models.Revision
-	if err := r.DB.First(&revision, "id = ?", id).Error; err != nil {
+	if err := r.DB.Preload("ArtProject").First(&revision, "id = ?", id).Error; err != nil {
 		slog.ErrorContext(ctx, "Failed to get revision by ID", "error", err, "revisionID", id)
 		return nil, err
 	}
@@ -175,11 +181,18 @@ func (r *ArtProjectRepository) GetRevisionByID(ctx context.Context, id string) (
 // GetArtProjectByID retrieves an art project by its ID
 func (r *ArtProjectRepository) GetArtProjectByID(ctx context.Context, id string) (*models.ArtProject, error) {
 	slog.InfoContext(ctx, "Getting art project by ID", "projectID", id)
+
 	var artProject models.ArtProject
-	if err := r.DB.First(&artProject, "id = ?", id).Error; err != nil {
+	if err := r.DB.Preload("Stash").Preload("User").First(&artProject, "id = ?", id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			customErr := &models.ErrNotFound{Resource: "ArtProject", ID: id}
+			slog.ErrorContext(ctx, "ArtProject not found", "err", customErr)
+			return nil, customErr
+		}
 		slog.ErrorContext(ctx, "Failed to get art project by ID", "error", err, "projectID", id)
 		return nil, err
 	}
+
 	slog.InfoContext(ctx, "Art project retrieved successfully", "projectID", id)
 	return &artProject, nil
 }
@@ -187,11 +200,13 @@ func (r *ArtProjectRepository) GetArtProjectByID(ctx context.Context, id string)
 // FindByStashID retrieves all art projects associated with a specific stash ID
 func (r *ArtProjectRepository) FindByStashID(ctx context.Context, stashID string) ([]models.ArtProject, error) {
 	slog.InfoContext(ctx, "Finding art projects by stash ID", "stashID", stashID)
+
 	var artProjects []models.ArtProject
-	if err := r.DB.Where("stash_id = ?", stashID).Find(&artProjects).Error; err != nil {
+	if err := r.DB.Preload("Stash").Where("stash_id = ?", stashID).Find(&artProjects).Error; err != nil {
 		slog.ErrorContext(ctx, "Failed to find art projects by stash ID", "error", err, "stashID", stashID)
 		return nil, err
 	}
+
 	slog.InfoContext(ctx, "Art projects found successfully", "stashID", stashID, "count", len(artProjects))
 	return artProjects, nil
 }

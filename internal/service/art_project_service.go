@@ -63,18 +63,18 @@ func (s *ArtProjectService) CreateArtProject(ctx context.Context, stashID, title
 
 // FindByID finds an art project by its ID
 func (s *ArtProjectService) FindByID(ctx context.Context, id string) (*models.ArtProject, error) {
-	slog.InfoContext(ctx, "Finding art project by ID", "artProjectID", id)
+	slog.InfoContext(ctx, "ArtProjectService: Finding art project by ID", "artProjectID", id)
 
 	artProject, err := s.repo.FindByID(ctx, id)
 	if err != nil {
-		slog.ErrorContext(ctx, "Failed to find art project by ID",
+		slog.ErrorContext(ctx, "ArtProjectService: Failed to find art project by ID",
 			"error", err,
 			"artProjectID", id,
 		)
 		return nil, err
 	}
 
-	slog.InfoContext(ctx, "Art project found successfully", "artProjectID", id)
+	slog.InfoContext(ctx, "ArtProjectService: Art project found successfully", "artProjectID", id)
 	return artProject, nil
 }
 

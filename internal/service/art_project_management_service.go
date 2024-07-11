@@ -64,6 +64,7 @@ func (aps *ArtProjectManagementService) CreateArtProjectAndRevision(ctx context.
 	artProject := &models.ArtProject{
 		ID:               uuid.New(),
 		StashID:          stash.ID,
+		UserID:           stash.UserID,
 		Title:            title,
 		CreatedAt:        time.Now(),
 		ContentType:      contentType,
@@ -76,7 +77,6 @@ func (aps *ArtProjectManagementService) CreateArtProjectAndRevision(ctx context.
 		ArtProjectID: artProject.ID,
 		Version:      1,
 		CreatedAt:    time.Now(),
-		Size:         0,
 	}
 
 	filePath, fileInfo, err := aps.storageRepo.SaveRevision(ctx, fileData, userID, artProject.ID.String(), revision.Version)
@@ -110,11 +110,17 @@ func (aps *ArtProjectManagementService) CreateArtProjectAndRevision(ctx context.
 func (aps *ArtProjectManagementService) AddRevision(ctx context.Context, userID, artProjectID string, fileData io.Reader, comment, filename string) (*models.Revision, error) {
 	slog.InfoContext(ctx, "Adding new revision", "userID", userID, "artProjectID", artProjectID, "filename", filename)
 
+	artProject, err := aps.artProjectRepo.GetArtProjectByID(ctx, artProjectID)
+	if err != nil {
+		slog.ErrorContext(ctx, "Failed to find art-project for user", "error", err, "artProjectID", artProjectID)
+		return nil, err
+	}
+
 	revisionID := uuid.New()
-	artProjectUUID := uuid.MustParse(artProjectID)
+
 	revision := &models.Revision{
 		ID:           revisionID,
-		ArtProjectID: artProjectUUID,
+		ArtProjectID: artProject.ID,
 		Version:      aps.determineNextVersion(ctx, artProjectID),
 		CreatedAt:    time.Now(),
 		Comment:      comment,
