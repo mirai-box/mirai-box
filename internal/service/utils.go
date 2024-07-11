@@ -1,37 +1,77 @@
 package service
 
 import (
-	"crypto/sha256"
+	"crypto/rand"
+	"encoding/base64"
 	"fmt"
-	"path/filepath"
+	"log/slog"
+	"strings"
+
+	"github.com/google/uuid"
+	"github.com/mr-tron/base58"
+	"golang.org/x/crypto/chacha20poly1305"
 )
 
-const base62Chars = "OC4XiPTFk8Jx370lrWoLUEm6wvcye2tujdHsQqh5BzVDaSNYf1G9AgZKRnIbMp"
+// GenerateArtID generates an encrypted ArtID from the RevisionID and UserID.
+func GenerateArtID(revisionID, userID uuid.UUID, secretKey []byte) (string, error) {
+	slog.Debug("GenerateArtID: secretKey", "len", len(secretKey))
 
-// encodeBase62 encodes a byte slice to a base62 string
-func encodeBase62(data []byte) string {
-	var result []byte
-	for _, byteVal := range data {
-		result = append(result, base62Chars[byteVal%62])
+	data := fmt.Sprintf("%s:%s", revisionID.String(), userID.String())
+	aead, err := chacha20poly1305.NewX(secretKey)
+	if err != nil {
+		return "", err
 	}
-	return string(result)
+
+	nonce := make([]byte, aead.NonceSize())
+	if _, err := rand.Read(nonce); err != nil {
+		return "", err
+	}
+
+	encrypted := aead.Seal(nonce, nonce, []byte(data), nil)
+	return base58.Encode(encrypted), nil
 }
 
-func getArtID(picID, revID string) string {
-	combinedStr := picID + ":" + revID
+// DecodeArtID decrypts the ArtID to retrieve the RevisionID and UserID.
+func DecodeArtID(artID string, secretKey []byte) (string, string, error) {
+	slog.Debug("DecodeArtID: secretKey", "len", len(secretKey))
 
-	// Compute the SHA-256 hash
-	hash := sha256.New()
-	hash.Write([]byte(combinedStr))
-	hashBytes := hash.Sum(nil)
+	encrypted, err := base58.Decode(artID)
+	if err != nil {
+		slog.Error("invalid ArtID format", "error", err, "artID", artID)
+		return "", "", fmt.Errorf("invalid ArtID format: %w", err)
+	}
 
-	base62Hash := encodeBase62(hashBytes)
+	aead, err := chacha20poly1305.NewX(secretKey)
+	if err != nil {
+		return "", "", err
+	}
 
-	return base62Hash
+	if len(encrypted) < aead.NonceSize() {
+		return "", "", fmt.Errorf("invalid ArtID length")
+	}
+
+	nonce, ciphertext := encrypted[:aead.NonceSize()], encrypted[aead.NonceSize():]
+	decrypted, err := aead.Open(nil, nonce, ciphertext, nil)
+	if err != nil {
+		slog.Error("can't decrypts and authenticates ciphertext", "error", err, "artID", artID)
+		return "", "", err
+	}
+
+	data := strings.Split(string(decrypted), ":")
+	if len(data) != 2 {
+		slog.Error("can't get data from decrypted string", "error", err, "decrypted", decrypted)
+		return "", "", fmt.Errorf("invalid ArtID format")
+	}
+
+	return data[0], data[1], nil
 }
 
-func getFilePath(filename, pictureID string, version int) string {
-	extension := filepath.Ext(filename)
-	filePath := filepath.Join(pictureID, fmt.Sprintf("%03d%s", version, extension))
-	return filePath
+// Generate a secure token
+func GenerateSecureToken(n int) (string, error) {
+	b := make([]byte, n)
+	_, err := rand.Read(b)
+	if err != nil {
+		return "", err
+	}
+	return base64.URLEncoding.EncodeToString(b), nil
 }

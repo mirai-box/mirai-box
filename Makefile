@@ -20,8 +20,7 @@ DOCKER := docker
 MOCKERY := mockery
 
 # Defining the path to the main Go file
-MAIN_GO := cmd/http/main.go
-MAIN_CGI_GO := cmd/cgi/main.go
+MAIN_GO := cmd/service/main.go
 
 .PHONY: all init test clean build/local run/local build/cgi run/docker deps test/update-mocks build/docker
 
@@ -37,11 +36,6 @@ build/local:
 	@mkdir -p $(BIN_DIR)
 	$(GOBUILD) -o $(GOBIN)/$(BINARY) $(MAIN_GO)
 
-build/cgi:
-	@echo "  >  Building binary for CGI ..."
-	@mkdir -p $(BIN_DIR)
-	CGO_ENABLED=0 GOOS=linux $(GOBUILD) -o $(GOBIN)/$(BINARY) $(MAIN_CGI_GO)
-
 # Run the application
 run/local:
 	@echo "  >  Running application locally..."
@@ -52,9 +46,14 @@ test/update-mocks:
 	$(MOCKERY) --all 
 
 # Run tests across the project
-test:
-	@echo "  >  Running tests..."
-	$(GOTEST) -v ./...
+test/unit:
+	@echo "  >  Running unit tests..."
+	$(GOTEST) -v  -coverprofile=coverage.out ./...
+
+test/integration:
+	@echo "  >  Running integration tests..."
+	$(GOTEST) -timeout 30s -v -tags=integration -coverprofile=coverage.out -coverpkg=./... ./...
+
 
 # Clean up binaries and cached data
 clean:

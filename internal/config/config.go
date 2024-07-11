@@ -1,95 +1,92 @@
 package config
 
 import (
+	"encoding/hex"
 	"fmt"
+	"log"
 	"log/slog"
 	"os"
-	"path"
+	"path/filepath"
 )
 
 const (
 	localStage        = "local"
-	defaultDebugLevel = "debug"
-	defualtDBPort     = "5432"
+	defaultDebugLevel = "info"
+	defaultDBPort     = "5432"
 	defaultDBHost     = "127.0.0.1"
-	defaultDBName     = "picture_db"
-	defaultDBPass     = "picture_db"
-	defaultDBUser     = "picture_db"
+	defaultDBName     = "mirai_box_db"
+	defaultDBUser     = "mirai_box_user"
 	defaultAppStage   = localStage
+	defaultPort       = "8080"
 )
 
 type Config struct {
 	LogLevel    slog.Level
 	Stage       string
 	Port        string
-	IsCGI       bool
 	Database    *DatabaseConfig
 	StorageRoot string
 	ProjectRoot string
 	SessionKey  string
+	SecretKey   []byte
 }
 
 type DatabaseConfig struct {
-	Host     string
-	Port     string
-	Database string
-	Username string
-	Password string
-	SSLMode  string
+	Host             string
+	Port             string
+	Database         string
+	Username         string
+	Password         string
+	PostgresPassword string
+	SSLMode          string
 }
 
 func GetApplicationConfig() (*Config, error) {
-	// Detect if running in a CGI environment
-	cgi := os.Getenv("GATEWAY_INTERFACE") != ""
+	projectRoot := getEnv("PROJECT_ROOT", getCurrentDir())
+	storageRoot := getEnv("STORAGE_ROOT", filepath.Join(projectRoot, "storage"))
 
-	// Configure port
-	port := os.Getenv("PORT")
-	if port == "" {
-		if cgi {
-			port = "" // In CGI mode, the port is not used.
-		} else {
-			port = "8080" // default HTTP port
-		}
-	}
-
-	projectRoot := os.Getenv("PROJECT_ROOT")
-	if projectRoot == "" {
-		// Get the current working directory
-		cwd, _ := os.Getwd()
-		projectRoot = cwd
-	}
-
-	storageRoot := os.Getenv("STORAGE_ROOT")
-	if storageRoot == "" {
-		storageRoot = path.Join(projectRoot, "storage")
-	}
-
-	// Get the session key from the environment variable
 	sessionKey := os.Getenv("SESSION_KEY")
 	if sessionKey == "" {
-		panic("SESSION_KEY environment variable is not set")
+		return nil, fmt.Errorf("SESSION_KEY environment variable is not set")
+	}
+
+	hexKey := os.Getenv("SECRET_KEY")
+	if sessionKey == "" {
+		return nil, fmt.Errorf("SECRET_KEY environment variable is not set")
+	}
+
+	// Decode the hex string to bytes
+	secretKey, err := hex.DecodeString(hexKey)
+	if err != nil {
+		log.Fatalf("Failed to decode hex key: %v", err)
+	}
+
+	// Check the length of the key
+	if len(secretKey) != 32 {
+		return nil, fmt.Errorf("Invalid key length: %d bytes. Key must be 32 bytes long.", len(secretKey))
 	}
 
 	return &Config{
 		Stage:       getEnv("APP_ENV", defaultAppStage),
-		Port:        port,
-		IsCGI:       cgi,
+		Port:        getEnv("PORT", defaultPort),
 		StorageRoot: storageRoot,
 		ProjectRoot: projectRoot,
 		SessionKey:  sessionKey,
-		LogLevel:    parseLogLevel(getEnv("DEBUG_LEVEL", defaultDebugLevel)),
-		Database:    GetDatabaseConfg(),
+		SecretKey:   secretKey,
+		LogLevel:    parseLogLevel(getEnv("LOG_LEVEL", defaultDebugLevel)),
+		Database:    GetDatabaseConfig(),
 	}, nil
 }
 
-func GetDatabaseConfg() *DatabaseConfig {
+func GetDatabaseConfig() *DatabaseConfig {
 	return &DatabaseConfig{
-		Host:     getEnv("DB_HOST", defaultDBHost),
-		Port:     getEnv("DB_PORT", defualtDBPort),
-		Username: getEnv("DB_USER", defaultDBUser),
-		Password: getEnv("DB_PASSWORD", defaultDBPass),
-		Database: getEnv("DB_NAME", defaultDBName),
-		SSLMode:  "disable",
+		Host:             getEnv("DB_HOST", defaultDBHost),
+		Port:             getEnv("DB_PORT", defaultDBPort),
+		Username:         getEnv("DB_USER", defaultDBUser),
+		Password:         os.Getenv("DB_PASSWORD"),
+		PostgresPassword: os.Getenv("DB_POSTGRES_PASSWORD"),
+		Database:         getEnv("DB_NAME", defaultDBName),
+		SSLMode:          getEnv("DB_SSLMODE", "disable"),
 	}
 }
 
@@ -97,9 +94,14 @@ func (conf *Config) IsLocal() bool {
 	return conf.Stage == localStage
 }
 
-func (dbConfig *DatabaseConfig) String() string {
+func (dbConfig *DatabaseConfig) ConnectionString() string {
 	return fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
 		dbConfig.Host, dbConfig.Port, dbConfig.Username, dbConfig.Password, dbConfig.Database, dbConfig.SSLMode)
+}
+
+func (dbConfig *DatabaseConfig) ConnectionPostgres() string {
+	return fmt.Sprintf("host=%s port=%s user=postgres dbname=postgres password=%s sslmode=%s",
+		dbConfig.Host, dbConfig.Port, dbConfig.PostgresPassword, dbConfig.SSLMode)
 }
 
 func parseLogLevel(s string) slog.Level {
@@ -111,9 +113,17 @@ func parseLogLevel(s string) slog.Level {
 }
 
 func getEnv(key, fallback string) string {
-	value, exists := os.LookupEnv(key)
-	if !exists {
-		value = fallback
+	if value, exists := os.LookupEnv(key); exists {
+		return value
 	}
-	return value
+	return fallback
+}
+
+func getCurrentDir() string {
+	dir, err := os.Getwd()
+	if err != nil {
+		slog.Error("Failed to get current directory", "error", err)
+		return ""
+	}
+	return dir
 }
