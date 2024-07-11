@@ -60,10 +60,8 @@ func (s *ArtProjectRetrievalService) CreateArtLink(ctx context.Context,
 	revisionID uuid.UUID, duration time.Duration,
 	oneTime bool, unlimited bool) (string, error) {
 
-	token, err := GenerateSecureToken(32) // 32-byte secure token
-	if err != nil {
-		return "", err
-	}
+	// TODO: use GenerateArtID()
+	token := "xxx"
 
 	expiresAt := time.Now().Add(duration)
 	if unlimited {

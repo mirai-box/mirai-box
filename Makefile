@@ -45,7 +45,6 @@ run/local:
 test/update-mocks:
 	$(MOCKERY) --all 
 
-# Run tests across the project
 test/unit:
 	@echo "  >  Running unit tests..."
 	$(GOTEST) -v  -coverprofile=coverage.out ./...
@@ -55,7 +54,6 @@ test/integration:
 	$(GOTEST) -timeout 30s -v -tags=integration -coverprofile=coverage.out -coverpkg=./... ./...
 
 
-# Clean up binaries and cached data
 clean:
 	@echo "  >  Cleaning build cache"
 	$(GOCLEAN)

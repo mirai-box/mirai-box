@@ -1,4 +1,4 @@
-name: Check on PR
+name: Checks on PR
 
 on:
   pull_request:
@@ -15,8 +15,10 @@ jobs:
         with:
           go-version: '1.22.x'
       - name: Install dependencies
-        run: go mod download
+        run: make init
       - name: Build
         run: go build -v ./...
+      - name: Unit tests
+        run: make test/unit
       - name: Integration tests
-        run: go test -timeout 30s -v -tags=integration -coverprofile=coverage.out -coverpkg=./... ./...
+        run: make test/integration
