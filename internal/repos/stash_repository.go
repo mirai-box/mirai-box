@@ -10,17 +10,17 @@ import (
 )
 
 // StashRepository implements the StashRepositoryInterface
-type StashRepository struct {
+type stashRepository struct {
 	DB *gorm.DB
 }
 
 // NewStashRepository creates a new instance of StashRepository
 func NewStashRepository(db *gorm.DB) StashRepositoryInterface {
-	return &StashRepository{DB: db}
+	return &stashRepository{DB: db}
 }
 
 // Create adds a new stash to the database
-func (r *StashRepository) Create(ctx context.Context, stash *models.Stash) error {
+func (r *stashRepository) Create(ctx context.Context, stash *models.Stash) error {
 	slog.InfoContext(ctx, "Creating new stash", "stashID", stash.ID, "userID", stash.UserID)
 	if err := r.DB.Create(stash).Error; err != nil {
 		slog.ErrorContext(ctx, "Failed to create stash", "error", err, "stashID", stash.ID)
@@ -31,7 +31,7 @@ func (r *StashRepository) Create(ctx context.Context, stash *models.Stash) error
 }
 
 // FindByID retrieves a stash by its ID
-func (r *StashRepository) FindByID(ctx context.Context, id string) (*models.Stash, error) {
+func (r *stashRepository) FindByID(ctx context.Context, id string) (*models.Stash, error) {
 	slog.InfoContext(ctx, "Finding stash by ID", "stashID", id)
 
 	var stash models.Stash
@@ -46,7 +46,7 @@ func (r *StashRepository) FindByID(ctx context.Context, id string) (*models.Stas
 }
 
 // FindByUserID retrieves a stash by user ID
-func (r *StashRepository) FindByUserID(ctx context.Context, userID string) (*models.Stash, error) {
+func (r *stashRepository) FindByUserID(ctx context.Context, userID string) (*models.Stash, error) {
 	slog.InfoContext(ctx, "StashRepository: Finding stash by userID", "userID", userID)
 
 	var stash models.Stash
@@ -61,7 +61,7 @@ func (r *StashRepository) FindByUserID(ctx context.Context, userID string) (*mod
 }
 
 // Update modifies an existing stash in the database
-func (r *StashRepository) Update(ctx context.Context, stash *models.Stash) error {
+func (r *stashRepository) Update(ctx context.Context, stash *models.Stash) error {
 	slog.InfoContext(ctx, "Updating stash", "stashID", stash.ID)
 	if err := r.DB.Save(stash).Error; err != nil {
 		slog.ErrorContext(ctx, "Failed to update stash", "error", err, "stashID", stash.ID)
@@ -72,7 +72,7 @@ func (r *StashRepository) Update(ctx context.Context, stash *models.Stash) error
 }
 
 // Delete removes a stash from the database
-func (r *StashRepository) Delete(ctx context.Context, id string) error {
+func (r *stashRepository) Delete(ctx context.Context, id string) error {
 	slog.InfoContext(ctx, "Deleting stash", "stashID", id)
 	if err := r.DB.Delete(&models.Stash{}, "id = ?", id).Error; err != nil {
 		slog.ErrorContext(ctx, "Failed to delete stash", "error", err, "stashID", id)
@@ -83,4 +83,4 @@ func (r *StashRepository) Delete(ctx context.Context, id string) error {
 }
 
 // Ensure StashRepository implements StashRepositoryInterface
-var _ StashRepositoryInterface = (*StashRepository)(nil)
+var _ StashRepositoryInterface = (*stashRepository)(nil)

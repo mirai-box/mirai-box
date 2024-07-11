@@ -10,17 +10,17 @@ import (
 )
 
 // UserRepository implements the UserRepositoryInterface
-type UserRepository struct {
+type userRepository struct {
 	DB *gorm.DB
 }
 
 // NewUserRepository creates a new instance of UserRepository
 func NewUserRepository(db *gorm.DB) UserRepositoryInterface {
-	return &UserRepository{DB: db}
+	return &userRepository{DB: db}
 }
 
 // Create adds a new user to the database
-func (r *UserRepository) Create(ctx context.Context, user *models.User) error {
+func (r *userRepository) Create(ctx context.Context, user *models.User) error {
 	slog.InfoContext(ctx, "Creating new user", "userID", user.ID, "username", user.Username)
 	if err := r.DB.Create(user).Error; err != nil {
 		slog.ErrorContext(ctx, "Failed to create user", "error", err, "userID", user.ID, "username", user.Username)
@@ -31,7 +31,7 @@ func (r *UserRepository) Create(ctx context.Context, user *models.User) error {
 }
 
 // FindByID retrieves a user by their ID
-func (r *UserRepository) FindByID(ctx context.Context, id string) (*models.User, error) {
+func (r *userRepository) FindByID(ctx context.Context, id string) (*models.User, error) {
 	slog.InfoContext(ctx, "Finding user by ID", "userID", id)
 	var user models.User
 	if err := r.DB.First(&user, "id = ?", id).Error; err != nil {
@@ -43,7 +43,7 @@ func (r *UserRepository) FindByID(ctx context.Context, id string) (*models.User,
 }
 
 // FindByUsername retrieves a user by their username
-func (r *UserRepository) FindByUsername(ctx context.Context, username string) (*models.User, error) {
+func (r *userRepository) FindByUsername(ctx context.Context, username string) (*models.User, error) {
 	slog.InfoContext(ctx, "Finding user by username", "username", username)
 	var user models.User
 	if err := r.DB.First(&user, "username = ?", username).Error; err != nil {
@@ -55,7 +55,7 @@ func (r *UserRepository) FindByUsername(ctx context.Context, username string) (*
 }
 
 // Update modifies an existing user in the database
-func (r *UserRepository) Update(ctx context.Context, user *models.User) error {
+func (r *userRepository) Update(ctx context.Context, user *models.User) error {
 	slog.InfoContext(ctx, "Updating user", "userID", user.ID, "username", user.Username)
 	if err := r.DB.Save(user).Error; err != nil {
 		slog.ErrorContext(ctx, "Failed to update user", "error", err, "userID", user.ID, "username", user.Username)
@@ -66,7 +66,7 @@ func (r *UserRepository) Update(ctx context.Context, user *models.User) error {
 }
 
 // Delete removes a user from the database
-func (r *UserRepository) Delete(ctx context.Context, id string) error {
+func (r *userRepository) Delete(ctx context.Context, id string) error {
 	slog.InfoContext(ctx, "Deleting user", "userID", id)
 	if err := r.DB.Delete(&models.User{}, "id = ?", id).Error; err != nil {
 		slog.ErrorContext(ctx, "Failed to delete user", "error", err, "userID", id)
@@ -77,4 +77,4 @@ func (r *UserRepository) Delete(ctx context.Context, id string) error {
 }
 
 // Ensure UserRepository implements UserRepositoryInterface
-var _ UserRepositoryInterface = (*UserRepository)(nil)
+var _ UserRepositoryInterface = (*userRepository)(nil)

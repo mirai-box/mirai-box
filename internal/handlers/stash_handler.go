@@ -1,15 +1,13 @@
-// File: internal/handlers/stash_handler.go
-
 package handlers
 
 import (
-	"encoding/json"
 	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 
 	"github.com/mirai-box/mirai-box/internal/middleware"
+	"github.com/mirai-box/mirai-box/internal/models"
 	"github.com/mirai-box/mirai-box/internal/service"
 )
 
@@ -22,73 +20,121 @@ func NewStashHandler(stashService service.StashServiceInterface) *StashHandler {
 }
 
 func (h *StashHandler) MyStash(w http.ResponseWriter, r *http.Request) {
-	user, ok := middleware.GetUserFromContext(r.Context())
+	ctx := r.Context()
+	user, ok := middleware.GetUserFromContext(ctx)
 	if !ok {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		slog.WarnContext(ctx, "Unauthorized attempt to access stash")
+		SendErrorResponse(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 
-	stash, err := h.stashService.FindByUserID(r.Context(), user.ID.String())
+	stash, err := h.stashService.FindByUserID(ctx, user.ID.String())
 	if err != nil {
-		slog.Error("Failed to retrieve stash", "error", err, "userID", user.ID.String())
-		http.Error(w, "Failed to retrieve stash", http.StatusInternalServerError)
+		slog.ErrorContext(ctx, "Failed to retrieve stash", "error", err, "userID", user.ID)
+		SendErrorResponse(w, http.StatusInternalServerError, "Failed to retrieve stash")
 		return
 	}
 
-	json.NewEncoder(w).Encode(stash)
+	response := models.StashResponse{
+		ID:          stash.ID,
+		UserID:      stash.UserID,
+		ArtProjects: stash.ArtProjects,
+		Files:       stash.Files,
+		UsedSpace:   stash.UsedSpace,
+		CreatedAt:   stash.CreatedAt,
+		UpdatedAt:   stash.UpdatedAt,
+	}
+
+	slog.InfoContext(ctx, "Stash retrieved successfully", "userID", user.ID)
+	SendJSONResponse(w, http.StatusOK, response)
 }
 
 func (h *StashHandler) CreateStash(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.GetUserIDFromContext(r.Context())
+	ctx := r.Context()
+	userID, ok := middleware.GetUserIDFromContext(ctx)
 	if !ok {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		slog.WarnContext(ctx, "Unauthorized attempt to create stash")
+		SendErrorResponse(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 
-	stash, err := h.stashService.CreateStash(r.Context(), userID)
+	stash, err := h.stashService.CreateStash(ctx, userID)
 	if err != nil {
-		slog.Error("Failed to create stash", "error", err, "userID", userID)
-		http.Error(w, "Failed to create stash", http.StatusInternalServerError)
+		slog.ErrorContext(ctx, "Failed to create stash", "error", err, "userID", userID)
+		SendErrorResponse(w, http.StatusInternalServerError, "Failed to create stash")
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(stash)
+	response := models.StashResponse{
+		ID:          stash.ID,
+		UserID:      stash.UserID,
+		ArtProjects: stash.ArtProjects,
+		Files:       stash.Files,
+		UsedSpace:   stash.UsedSpace,
+		CreatedAt:   stash.CreatedAt,
+		UpdatedAt:   stash.UpdatedAt,
+	}
+
+	slog.InfoContext(ctx, "Stash created successfully", "stashID", stash.ID, "userID", userID)
+	SendJSONResponse(w, http.StatusCreated, response)
 }
 
 func (h *StashHandler) FindByID(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	stashID := chi.URLParam(r, "id")
 	if stashID == "" {
-		http.Error(w, "Stash ID is required", http.StatusBadRequest)
+		slog.WarnContext(ctx, "Attempt to find stash without ID")
+		SendErrorResponse(w, http.StatusBadRequest, "Stash ID is required")
 		return
 	}
 
-	stash, err := h.stashService.FindByID(r.Context(), stashID)
+	stash, err := h.stashService.FindByID(ctx, stashID)
 	if err != nil {
-		slog.Error("Failed to find stash", "error", err, "stashID", stashID)
-		http.Error(w, "Stash not found", http.StatusNotFound)
+		slog.ErrorContext(ctx, "Failed to find stash", "error", err, "stashID", stashID)
+		SendErrorResponse(w, http.StatusNotFound, "Stash not found")
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(stash)
+	response := models.StashResponse{
+		ID:          stash.ID,
+		UserID:      stash.UserID,
+		ArtProjects: stash.ArtProjects,
+		Files:       stash.Files,
+		UsedSpace:   stash.UsedSpace,
+		CreatedAt:   stash.CreatedAt,
+		UpdatedAt:   stash.UpdatedAt,
+	}
+
+	slog.InfoContext(ctx, "Stash found successfully", "stashID", stashID)
+	SendJSONResponse(w, http.StatusOK, response)
 }
 
 func (h *StashHandler) FindByUserID(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	userID := chi.URLParam(r, "userId")
 	if userID == "" {
-		http.Error(w, "User ID is required", http.StatusBadRequest)
+		slog.WarnContext(ctx, "Attempt to find stash without user ID")
+		SendErrorResponse(w, http.StatusBadRequest, "User ID is required")
 		return
 	}
 
-	stash, err := h.stashService.FindByUserID(r.Context(), userID)
+	stash, err := h.stashService.FindByUserID(ctx, userID)
 	if err != nil {
-		slog.Error("Failed to find stash for user", "error", err, "userID", userID)
-		http.Error(w, "Stash not found", http.StatusNotFound)
+		slog.ErrorContext(ctx, "Failed to find stash for user", "error", err, "userID", userID)
+		SendErrorResponse(w, http.StatusNotFound, "Stash not found")
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(stash)
+	response := models.StashResponse{
+		ID:          stash.ID,
+		UserID:      stash.UserID,
+		ArtProjects: stash.ArtProjects,
+		Files:       stash.Files,
+		UsedSpace:   stash.UsedSpace,
+		CreatedAt:   stash.CreatedAt,
+		UpdatedAt:   stash.UpdatedAt,
+	}
+
+	slog.InfoContext(ctx, "Stash found successfully for user", "userID", userID)
+	SendJSONResponse(w, http.StatusOK, response)
 }

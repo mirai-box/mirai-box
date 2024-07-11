@@ -10,19 +10,19 @@ import (
 )
 
 // DBStorageRepository implements the StorageRepositoryInterface
-type DBStorageRepository struct {
+type dbStorageRepository struct {
 	root string
 }
 
 // NewStorageRepository creates a new instance of DBStorageRepository
 func NewStorageRepository(root string) StorageRepositoryInterface {
-	return &DBStorageRepository{
+	return &dbStorageRepository{
 		root: root,
 	}
 }
 
 // SaveRevision saves a new revision of a file
-func (s *DBStorageRepository) SaveRevision(ctx context.Context,
+func (s *dbStorageRepository) SaveRevision(ctx context.Context,
 	fileData io.Reader, userID, artProjectID string, version int) (string, os.FileInfo, error) {
 	slog.InfoContext(ctx, "Saving revision", "userID", userID, "artProjectID", artProjectID, "version", version)
 
@@ -53,12 +53,12 @@ func (s *DBStorageRepository) SaveRevision(ctx context.Context,
 		return "", nil, err
 	}
 
-	slog.InfoContext(ctx, "Revision saved successfully", "path")
+	slog.InfoContext(ctx, "Revision saved successfully", "path", filePath)
 	return filePath, fileInfo, nil
 }
 
 // GetRevision retrieves a specific revision of a file
-func (s *DBStorageRepository) GetRevision(ctx context.Context, userID, artProjectID string, version int) (*os.File, error) {
+func (s *dbStorageRepository) GetRevision(ctx context.Context, userID, artProjectID string, version int) (*os.File, error) {
 	slog.InfoContext(ctx, "Getting revision", "userID", userID, "artProjectID", artProjectID, "version", version)
 
 	filePath := filepath.Join(s.root, userID, artProjectID, "revisions", "v"+strconv.Itoa(version), "file")
@@ -75,4 +75,4 @@ func (s *DBStorageRepository) GetRevision(ctx context.Context, userID, artProjec
 }
 
 // Ensure DBStorageRepository implements StorageRepositoryInterface
-var _ StorageRepositoryInterface = (*DBStorageRepository)(nil)
+var _ StorageRepositoryInterface = (*dbStorageRepository)(nil)

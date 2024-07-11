@@ -11,17 +11,17 @@ import (
 )
 
 // WebPageRepository implements the WebPageRepositoryInterface
-type WebPageRepository struct {
+type webPageRepository struct {
 	DB *gorm.DB
 }
 
 // NewWebPageRepository creates a new instance of WebPageRepository
 func NewWebPageRepository(db *gorm.DB) WebPageRepositoryInterface {
-	return &WebPageRepository{DB: db}
+	return &webPageRepository{DB: db}
 }
 
 // Create adds a new web page to the database
-func (r *WebPageRepository) Create(ctx context.Context, webPage *models.WebPage) error {
+func (r *webPageRepository) Create(ctx context.Context, webPage *models.WebPage) error {
 	slog.InfoContext(ctx, "Creating new web page", "pageID", webPage.ID)
 	if err := r.DB.Create(webPage).Error; err != nil {
 		slog.ErrorContext(ctx, "Failed to create web page", "error", err, "pageID", webPage.ID)
@@ -32,7 +32,7 @@ func (r *WebPageRepository) Create(ctx context.Context, webPage *models.WebPage)
 }
 
 // Update modifies an existing web page in the database
-func (r *WebPageRepository) Update(ctx context.Context, webPage *models.WebPage) error {
+func (r *webPageRepository) Update(ctx context.Context, webPage *models.WebPage) error {
 	slog.InfoContext(ctx, "db: Updating web page",
 		"pageID", webPage.ID,
 		"userID", webPage.UserID,
@@ -48,7 +48,7 @@ func (r *WebPageRepository) Update(ctx context.Context, webPage *models.WebPage)
 }
 
 // Delete removes a web page from the database
-func (r *WebPageRepository) Delete(ctx context.Context, id uuid.UUID) error {
+func (r *webPageRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	slog.InfoContext(ctx, "Deleting web page", "pageID", id)
 	if err := r.DB.Delete(&models.WebPage{}, "id = ?", id).Error; err != nil {
 		slog.ErrorContext(ctx, "Failed to delete web page", "error", err, "pageID", id)
@@ -59,7 +59,7 @@ func (r *WebPageRepository) Delete(ctx context.Context, id uuid.UUID) error {
 }
 
 // FindByID retrieves a web page by its ID
-func (r *WebPageRepository) FindByID(ctx context.Context, id string) (*models.WebPage, error) {
+func (r *webPageRepository) FindByID(ctx context.Context, id string) (*models.WebPage, error) {
 	slog.InfoContext(ctx, "Finding web page by ID", "pageID", id)
 	var webPage models.WebPage
 	if err := r.DB.First(&webPage, "id = ?", id).Error; err != nil {
@@ -71,7 +71,7 @@ func (r *WebPageRepository) FindByID(ctx context.Context, id string) (*models.We
 }
 
 // FindAll retrieves all web pages from the database
-func (r *WebPageRepository) FindAll(ctx context.Context) ([]models.WebPage, error) {
+func (r *webPageRepository) FindAll(ctx context.Context) ([]models.WebPage, error) {
 	slog.InfoContext(ctx, "Finding all web pages")
 	var webPages []models.WebPage
 	if err := r.DB.Find(&webPages).Error; err != nil {
@@ -83,7 +83,7 @@ func (r *WebPageRepository) FindAll(ctx context.Context) ([]models.WebPage, erro
 }
 
 // FindByType retrieves all web pages of a specific type
-func (r *WebPageRepository) FindByType(ctx context.Context, pageType string) ([]models.WebPage, error) {
+func (r *webPageRepository) FindByType(ctx context.Context, pageType string) ([]models.WebPage, error) {
 	slog.InfoContext(ctx, "Finding web pages by type", "pageType", pageType)
 
 	var webPages []models.WebPage
@@ -97,7 +97,7 @@ func (r *WebPageRepository) FindByType(ctx context.Context, pageType string) ([]
 }
 
 // FindByType retrieves all web pages of a specific user
-func (r *WebPageRepository) FindByUserID(ctx context.Context, userID string) ([]models.WebPage, error) {
+func (r *webPageRepository) FindByUserID(ctx context.Context, userID string) ([]models.WebPage, error) {
 	slog.InfoContext(ctx, "Finding web pages by user", "userID", userID)
 
 	var webPages []models.WebPage
@@ -111,4 +111,4 @@ func (r *WebPageRepository) FindByUserID(ctx context.Context, userID string) ([]
 }
 
 // Ensure WebPageRepository implements WebPageRepositoryInterface
-var _ WebPageRepositoryInterface = (*WebPageRepository)(nil)
+var _ WebPageRepositoryInterface = (*webPageRepository)(nil)

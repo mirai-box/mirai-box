@@ -4,23 +4,23 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/mirai-box/mirai-box/internal/models"
-
 	"gorm.io/gorm"
+
+	"github.com/mirai-box/mirai-box/internal/models"
 )
 
 // CollectionRepository implements the CollectionRepositoryInterface
-type CollectionRepository struct {
+type collectionRepository struct {
 	DB *gorm.DB
 }
 
 // NewCollectionRepository creates a new instance of CollectionRepository
 func NewCollectionRepository(db *gorm.DB) CollectionRepositoryInterface {
-	return &CollectionRepository{DB: db}
+	return &collectionRepository{DB: db}
 }
 
 // Create adds a new collection to the database
-func (r *CollectionRepository) Create(ctx context.Context, collection *models.Collection) error {
+func (r *collectionRepository) Create(ctx context.Context, collection *models.Collection) error {
 	slog.InfoContext(ctx, "Creating new collection", "collectionID", collection.ID, "userID", collection.UserID)
 	if err := r.DB.Create(collection).Error; err != nil {
 		slog.ErrorContext(ctx, "Failed to create collection", "error", err, "collectionID", collection.ID)
@@ -31,7 +31,7 @@ func (r *CollectionRepository) Create(ctx context.Context, collection *models.Co
 }
 
 // FindByID retrieves a collection by its ID
-func (r *CollectionRepository) FindByID(ctx context.Context, id string) (*models.Collection, error) {
+func (r *collectionRepository) FindByID(ctx context.Context, id string) (*models.Collection, error) {
 	slog.InfoContext(ctx, "Finding collection by ID", "collectionID", id)
 	var collection models.Collection
 	err := r.DB.Preload("User").First(&collection, "id = ?", id).Error
@@ -44,7 +44,7 @@ func (r *CollectionRepository) FindByID(ctx context.Context, id string) (*models
 }
 
 // FindByUserID retrieves all collections for a specific user
-func (r *CollectionRepository) FindByUserID(ctx context.Context, userID string) ([]models.Collection, error) {
+func (r *collectionRepository) FindByUserID(ctx context.Context, userID string) ([]models.Collection, error) {
 	slog.InfoContext(ctx, "Finding collections by user ID", "userID", userID)
 	var collections []models.Collection
 	err := r.DB.Preload("User").Where("user_id = ?", userID).Find(&collections).Error
@@ -57,7 +57,7 @@ func (r *CollectionRepository) FindByUserID(ctx context.Context, userID string) 
 }
 
 // Update modifies an existing collection in the database
-func (r *CollectionRepository) Update(ctx context.Context, collection *models.Collection) error {
+func (r *collectionRepository) Update(ctx context.Context, collection *models.Collection) error {
 	slog.InfoContext(ctx, "Updating collection", "collectionID", collection.ID)
 	if err := r.DB.Save(collection).Error; err != nil {
 		slog.ErrorContext(ctx, "Failed to update collection", "error", err, "collectionID", collection.ID)
@@ -68,7 +68,7 @@ func (r *CollectionRepository) Update(ctx context.Context, collection *models.Co
 }
 
 // Delete removes a collection from the database
-func (r *CollectionRepository) Delete(ctx context.Context, id string) error {
+func (r *collectionRepository) Delete(ctx context.Context, id string) error {
 	slog.InfoContext(ctx, "Deleting collection", "collectionID", id)
 	if err := r.DB.Delete(&models.Collection{}, "id = ?", id).Error; err != nil {
 		slog.ErrorContext(ctx, "Failed to delete collection", "error", err, "collectionID", id)
@@ -79,4 +79,4 @@ func (r *CollectionRepository) Delete(ctx context.Context, id string) error {
 }
 
 // Ensure CollectionRepository implements CollectionRepositoryInterface
-var _ CollectionRepositoryInterface = (*CollectionRepository)(nil)
+var _ CollectionRepositoryInterface = (*collectionRepository)(nil)

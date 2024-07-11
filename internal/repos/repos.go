@@ -34,6 +34,7 @@ type ArtProjectRepositoryInterface interface {
 	CreateArtLink(ctx context.Context, artLink *models.ArtLink) error
 	UpdateArtLink(ctx context.Context, artLink *models.ArtLink) error
 	GetArtLinkByToken(ctx context.Context, token string) (*models.ArtLink, error)
+	FindByUserID(ctx context.Context, userID string) ([]models.ArtProject, error)
 }
 
 // StorageRepositoryInterface defines the contract for storage-related operations

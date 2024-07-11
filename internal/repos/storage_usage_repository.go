@@ -10,17 +10,17 @@ import (
 )
 
 // StorageUsageRepository implements the StorageUsageRepositoryInterface
-type StorageUsageRepository struct {
+type storageUsageRepository struct {
 	DB *gorm.DB
 }
 
 // NewStorageUsageRepository creates a new instance of StorageUsageRepository
 func NewStorageUsageRepository(db *gorm.DB) StorageUsageRepositoryInterface {
-	return &StorageUsageRepository{DB: db}
+	return &storageUsageRepository{DB: db}
 }
 
 // Create adds a new storage usage record to the database
-func (r *StorageUsageRepository) Create(ctx context.Context, storageUsage *models.StorageUsage) error {
+func (r *storageUsageRepository) Create(ctx context.Context, storageUsage *models.StorageUsage) error {
 	slog.InfoContext(ctx, "Creating new storage usage record", "userID", storageUsage.UserID)
 
 	if err := r.DB.Create(storageUsage).Error; err != nil {
@@ -33,7 +33,7 @@ func (r *StorageUsageRepository) Create(ctx context.Context, storageUsage *model
 }
 
 // FindByUserID retrieves a storage usage record by user ID
-func (r *StorageUsageRepository) FindByUserID(ctx context.Context, userID string) (*models.StorageUsage, error) {
+func (r *storageUsageRepository) FindByUserID(ctx context.Context, userID string) (*models.StorageUsage, error) {
 	slog.InfoContext(ctx, "Finding storage usage record by user ID", "userID", userID)
 
 	var storageUsage models.StorageUsage
@@ -47,7 +47,7 @@ func (r *StorageUsageRepository) FindByUserID(ctx context.Context, userID string
 }
 
 // Update modifies an existing storage usage record in the database
-func (r *StorageUsageRepository) Update(ctx context.Context, storageUsage *models.StorageUsage) error {
+func (r *storageUsageRepository) Update(ctx context.Context, storageUsage *models.StorageUsage) error {
 	slog.InfoContext(ctx, "Updating storage usage record", "userID", storageUsage.UserID)
 
 	if err := r.DB.Save(storageUsage).Error; err != nil {
@@ -60,7 +60,7 @@ func (r *StorageUsageRepository) Update(ctx context.Context, storageUsage *model
 }
 
 // Delete removes a storage usage record from the database
-func (r *StorageUsageRepository) Delete(ctx context.Context, userID string) error {
+func (r *storageUsageRepository) Delete(ctx context.Context, userID string) error {
 	slog.InfoContext(ctx, "Deleting storage usage record", "userID", userID)
 
 	if err := r.DB.Delete(&models.StorageUsage{}, "user_id = ?", userID).Error; err != nil {
@@ -73,4 +73,4 @@ func (r *StorageUsageRepository) Delete(ctx context.Context, userID string) erro
 }
 
 // Ensure StorageUsageRepository implements StorageUsageRepositoryInterface
-var _ StorageUsageRepositoryInterface = (*StorageUsageRepository)(nil)
+var _ StorageUsageRepositoryInterface = (*storageUsageRepository)(nil)
