@@ -12,17 +12,17 @@ import (
 )
 
 // SaleService implements the SaleServiceInterface
-type SaleService struct {
+type saleService struct {
 	repo repos.SaleRepositoryInterface
 }
 
 // NewSaleService creates a new instance of SaleService
 func NewSaleService(repo repos.SaleRepositoryInterface) SaleServiceInterface {
-	return &SaleService{repo: repo}
+	return &saleService{repo: repo}
 }
 
 // CreateSale creates a new sale record for an art project
-func (s *SaleService) CreateSale(ctx context.Context, artProjectID, userID string, price float64) (*models.Sale, error) {
+func (s *saleService) CreateSale(ctx context.Context, artProjectID, userID string, price float64) (*models.Sale, error) {
 	sale := &models.Sale{
 		ID:           uuid.New(),
 		ArtProjectID: uuid.MustParse(artProjectID),
@@ -43,7 +43,7 @@ func (s *SaleService) CreateSale(ctx context.Context, artProjectID, userID strin
 }
 
 // FindByID finds a sale by its ID
-func (s *SaleService) FindByID(ctx context.Context, id string) (*models.Sale, error) {
+func (s *saleService) FindByID(ctx context.Context, id string) (*models.Sale, error) {
 	slog.InfoContext(ctx, "Finding sale by ID", "saleID", id)
 
 	sale, err := s.repo.FindByID(ctx, id)
@@ -57,7 +57,7 @@ func (s *SaleService) FindByID(ctx context.Context, id string) (*models.Sale, er
 }
 
 // FindByUserID finds all sales made by a specific user
-func (s *SaleService) FindByUserID(ctx context.Context, userID string) ([]models.Sale, error) {
+func (s *saleService) FindByUserID(ctx context.Context, userID string) ([]models.Sale, error) {
 	slog.InfoContext(ctx, "Finding sales by user ID", "userID", userID)
 
 	sales, err := s.repo.FindByUserID(ctx, userID)
@@ -71,7 +71,7 @@ func (s *SaleService) FindByUserID(ctx context.Context, userID string) ([]models
 }
 
 // FindByArtProjectID finds all sales for a specific art project
-func (s *SaleService) FindByArtProjectID(ctx context.Context, artProjectID string) ([]models.Sale, error) {
+func (s *saleService) FindByArtProjectID(ctx context.Context, artProjectID string) ([]models.Sale, error) {
 	slog.InfoContext(ctx, "Finding sales by art project ID", "artProjectID", artProjectID)
 
 	sales, err := s.repo.FindByArtProjectID(ctx, artProjectID)
@@ -85,4 +85,4 @@ func (s *SaleService) FindByArtProjectID(ctx context.Context, artProjectID strin
 }
 
 // Ensure SaleService implements SaleServiceInterface
-var _ SaleServiceInterface = (*SaleService)(nil)
+var _ SaleServiceInterface = (*saleService)(nil)

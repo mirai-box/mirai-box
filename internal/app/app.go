@@ -77,7 +77,6 @@ func SetupRoutes(db *gorm.DB, conf *config.Config) http.Handler {
 	r.Post("/login", userHandler.Login)
 	r.Get("/login/check", userHandler.LoginCheck)
 	r.Get("/art/{artID}", artProjectRetrievalHandler.GetArtByID)
-	// r.Post("/art/link", artProjectRetrievalHandler.CreateArtLinkHandler)
 
 	r.Route("/self", func(r chi.Router) {
 		r.Use(m.AuthMiddleware)
@@ -99,9 +98,6 @@ func SetupRoutes(db *gorm.DB, conf *config.Config) http.Handler {
 
 		r.Post("/artprojects", artProjectManagementHandler.CreateArtProject)
 		r.Get("/artprojects/{artID}/revisions/{revisionID}", artProjectRetrievalHandler.RevisionDownload)
-
-		// r.Get("/collections", collectionHandler.MyCollections)
-		// r.Get("/storage", storageUsageHandler.MyStorageUsage)
 	})
 
 	// Routes
@@ -170,26 +166,3 @@ func SetupRoutes(db *gorm.DB, conf *config.Config) http.Handler {
 
 	return r
 }
-
-// // Public Routes
-// mux.Get("/art/{artID}", pictureRetrievalHandler.SharedPictureHandler)
-// mux.Get("/galleries/main", galleryHandler.GetMainGallery)
-// mux.Get("/galleries/{galleryID}/images", galleryHandler.GetImagesByGalleryIDHandler)
-// // Admin Routes
-// mux.Route("/stash", func(r chi.Router) {
-// 	r.Use(userHandler.AuthMiddleware) // Middleware for protecting admin routes
-// 	r.Get("/pictures", pictureManagementHandler.ListPicturesHandler)
-// 	r.Get("/pictures/{pictureID}", pictureRetrievalHandler.LatestFileDownloadHandler)
-// 	r.Get("/pictures/{pictureID}/revisions", pictureManagementHandler.ListRevisionHandler)
-// 	r.Get("/pictures/{pictureID}/revisions/{revisionID}", pictureRetrievalHandler.FileRevisionDownloadHandler)
-// 	r.Post("/pictures/{pictureID}/revisions", pictureManagementHandler.AddRevisionHandler)
-// 	r.Post("/pictures/upload", pictureManagementHandler.UploadHandler)
-// 	r.Get("/galleries", galleryHandler.ListGalleries)
-// 	r.Post("/galleries", galleryHandler.CreateGallery)
-// 	r.Post("/galleries/{galleryID}/images", galleryHandler.AddImageToGallery)
-// 	r.Post("/galleries/{galleryID}/publish", galleryHandler.PublishGallery)
-// 	r.Get("/pages", webPageHandler.ListWebPagesHandler)
-// 	r.Get("/pages/{id}", webPageHandler.GetWebPageHandler)
-// 	r.Post("/pages", webPageHandler.CreateWebPageHandler)
-// 	r.Put("/pages/{id}", webPageHandler.UpdateWebPageHandler)
-// 	r.Delete("/pages/{id}", webPageHandler.DeleteWebPageHandler)

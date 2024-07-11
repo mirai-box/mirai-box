@@ -12,17 +12,17 @@ import (
 )
 
 // WebPageService implements the WebPageServiceInterface
-type WebPageService struct {
+type webPageService struct {
 	repo repos.WebPageRepositoryInterface
 }
 
 // NewWebPageService creates a new WebPageService
 func NewWebPageService(repo repos.WebPageRepositoryInterface) WebPageServiceInterface {
-	return &WebPageService{repo: repo}
+	return &webPageService{repo: repo}
 }
 
 // CreateWebPage creates a new web page
-func (s *WebPageService) CreateWebPage(ctx context.Context, webPage *models.WebPage) (*models.WebPage, error) {
+func (s *webPageService) CreateWebPage(ctx context.Context, webPage *models.WebPage) (*models.WebPage, error) {
 	slog.InfoContext(ctx, "Creating new web page",
 		"userID", webPage.UserID,
 		"title", webPage.Title,
@@ -49,7 +49,7 @@ func (s *WebPageService) CreateWebPage(ctx context.Context, webPage *models.WebP
 }
 
 // UpdateWebPage updates an existing web page
-func (s *WebPageService) UpdateWebPage(ctx context.Context, webPage *models.WebPage) (*models.WebPage, error) {
+func (s *webPageService) UpdateWebPage(ctx context.Context, webPage *models.WebPage) (*models.WebPage, error) {
 	slog.InfoContext(ctx, "Updating web page", "pageID", webPage.ID)
 
 	webPage.UpdatedAt = time.Now()
@@ -64,7 +64,7 @@ func (s *WebPageService) UpdateWebPage(ctx context.Context, webPage *models.WebP
 }
 
 // DeleteWebPage deletes a web page by ID
-func (s *WebPageService) DeleteWebPage(ctx context.Context, id string) error {
+func (s *webPageService) DeleteWebPage(ctx context.Context, id string) error {
 	slog.InfoContext(ctx, "Deleting web page", "pageID", id)
 
 	if err := s.repo.Delete(ctx, uuid.MustParse(id)); err != nil {
@@ -77,7 +77,7 @@ func (s *WebPageService) DeleteWebPage(ctx context.Context, id string) error {
 }
 
 // GetWebPage retrieves a web page by ID
-func (s *WebPageService) GetWebPage(ctx context.Context, id string) (*models.WebPage, error) {
+func (s *webPageService) GetWebPage(ctx context.Context, id string) (*models.WebPage, error) {
 	slog.InfoContext(ctx, "Getting web page", "pageID", id)
 
 	wp, err := s.repo.FindByID(ctx, id)
@@ -91,7 +91,7 @@ func (s *WebPageService) GetWebPage(ctx context.Context, id string) (*models.Web
 }
 
 // ListWebPages retrieves all web pages
-func (s *WebPageService) ListWebPages(ctx context.Context) ([]models.WebPage, error) {
+func (s *webPageService) ListWebPages(ctx context.Context) ([]models.WebPage, error) {
 	slog.InfoContext(ctx, "Listing all web pages")
 
 	pages, err := s.repo.FindAll(ctx)
@@ -105,7 +105,7 @@ func (s *WebPageService) ListWebPages(ctx context.Context) ([]models.WebPage, er
 }
 
 // ListWebPagesByType retrieves all web pages by type
-func (s *WebPageService) ListWebPagesByType(ctx context.Context, pageType string) ([]models.WebPage, error) {
+func (s *webPageService) ListWebPagesByType(ctx context.Context, pageType string) ([]models.WebPage, error) {
 	slog.InfoContext(ctx, "Listing web pages by type", "pageType", pageType)
 
 	pages, err := s.repo.FindByType(ctx, pageType)
@@ -118,7 +118,7 @@ func (s *WebPageService) ListWebPagesByType(ctx context.Context, pageType string
 	return pages, nil
 }
 
-func (s *WebPageService) ListUserWebPages(ctx context.Context, userID string) ([]models.WebPage, error) {
+func (s *webPageService) ListUserWebPages(ctx context.Context, userID string) ([]models.WebPage, error) {
 	slog.InfoContext(ctx, "Listing web pages by user", "userID", userID)
 
 	pages, err := s.repo.FindByUserID(ctx, userID)
@@ -132,4 +132,4 @@ func (s *WebPageService) ListUserWebPages(ctx context.Context, userID string) ([
 }
 
 // Ensure WebPageService implements WebPageServiceInterface
-var _ WebPageServiceInterface = (*WebPageService)(nil)
+var _ WebPageServiceInterface = (*webPageService)(nil)
