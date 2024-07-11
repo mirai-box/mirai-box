@@ -13,17 +13,17 @@ import (
 )
 
 // UserService implements the UserServiceInterface
-type UserService struct {
+type userService struct {
 	repo repos.UserRepositoryInterface
 }
 
 // NewUserService creates a new UserService
 func NewUserService(repo repos.UserRepositoryInterface) UserServiceInterface {
-	return &UserService{repo: repo}
+	return &userService{repo: repo}
 }
 
 // Authenticate verifies user credentials and returns the user if valid
-func (s *UserService) Authenticate(ctx context.Context, username, password string) (*models.User, error) {
+func (s *userService) Authenticate(ctx context.Context, username, password string) (*models.User, error) {
 	slog.InfoContext(ctx, "Authenticating user", "username", username)
 
 	user, err := s.repo.FindByUsername(ctx, username)
@@ -42,7 +42,7 @@ func (s *UserService) Authenticate(ctx context.Context, username, password strin
 }
 
 // FindByID retrieves a user by their ID
-func (s *UserService) FindByID(ctx context.Context, id string) (*models.User, error) {
+func (s *userService) FindByID(ctx context.Context, id string) (*models.User, error) {
 	slog.InfoContext(ctx, "Finding user by ID", "userID", id)
 
 	user, err := s.repo.FindByID(ctx, id)
@@ -56,7 +56,7 @@ func (s *UserService) FindByID(ctx context.Context, id string) (*models.User, er
 }
 
 // CreateUser creates a new user
-func (s *UserService) CreateUser(ctx context.Context, username, password, role string) (*models.User, error) {
+func (s *userService) CreateUser(ctx context.Context, username, password, role string) (*models.User, error) {
 	slog.InfoContext(ctx, "Creating new user", "username", username, "role", role)
 
 	hashedPassword, err := HashPassword(password)
@@ -81,16 +81,7 @@ func (s *UserService) CreateUser(ctx context.Context, username, password, role s
 	return user, nil
 }
 
-// HashPassword hashes the password using bcrypt
-func HashPassword(password string) (string, error) {
-	bytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	if err != nil {
-		return "", err
-	}
-	return string(bytes), nil
-}
-
-func (s *UserService) UpdateUser(ctx context.Context, user *models.User) (*models.User, error) {
+func (s *userService) UpdateUser(ctx context.Context, user *models.User) (*models.User, error) {
 	existingUser, err := s.repo.FindByID(ctx, user.ID.String())
 	if err != nil {
 		return nil, err
@@ -116,9 +107,9 @@ func (s *UserService) UpdateUser(ctx context.Context, user *models.User) (*model
 	return existingUser, nil
 }
 
-func (s *UserService) DeleteUser(ctx context.Context, id string) error {
+func (s *userService) DeleteUser(ctx context.Context, id string) error {
 	return s.repo.Delete(ctx, id)
 }
 
 // Ensure UserService implements UserServiceInterface
-var _ UserServiceInterface = (*UserService)(nil)
+var _ UserServiceInterface = (*userService)(nil)

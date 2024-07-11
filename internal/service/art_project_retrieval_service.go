@@ -15,7 +15,7 @@ import (
 )
 
 // ArtProjectRetrievalService implements the ArtProjectRetrievalServiceInterface
-type ArtProjectRetrievalService struct {
+type artProjectRetrievalService struct {
 	artProjectRepo repos.ArtProjectRepositoryInterface
 	storageRepo    repos.StorageRepositoryInterface
 	secretKey      []byte
@@ -27,14 +27,14 @@ func NewArtProjectRetrievalService(
 	storageRepo repos.StorageRepositoryInterface,
 	secretKey []byte,
 ) ArtProjectRetrievalServiceInterface {
-	return &ArtProjectRetrievalService{
+	return &artProjectRetrievalService{
 		artProjectRepo: artProjectRepo,
 		storageRepo:    storageRepo,
 		secretKey:      secretKey,
 	}
 }
 
-func (s *ArtProjectRetrievalService) GetRevisionByArtID(ctx context.Context, artID string) (*models.Revision, error) {
+func (s *artProjectRetrievalService) GetRevisionByArtID(ctx context.Context, artID string) (*models.Revision, error) {
 	revisionID, userID, err := DecodeArtID(artID, s.secretKey)
 	if err != nil {
 		slog.ErrorContext(ctx, "Failed to decode artID", "error", err, "artID", artID)
@@ -56,7 +56,7 @@ func (s *ArtProjectRetrievalService) GetRevisionByArtID(ctx context.Context, art
 }
 
 // CreateArtLink creates an art link with expiry and one-time use functionality
-func (s *ArtProjectRetrievalService) CreateArtLink(ctx context.Context,
+func (s *artProjectRetrievalService) CreateArtLink(ctx context.Context,
 	revisionID uuid.UUID, duration time.Duration,
 	oneTime bool, unlimited bool) (string, error) {
 
@@ -83,7 +83,7 @@ func (s *ArtProjectRetrievalService) CreateArtLink(ctx context.Context,
 }
 
 // GetArtByToken retrieves the art using the provided token and validates it
-func (s *ArtProjectRetrievalService) GetArtByToken(ctx context.Context, token string) (*models.Revision, error) {
+func (s *artProjectRetrievalService) GetArtByToken(ctx context.Context, token string) (*models.Revision, error) {
 	artLink, err := s.artProjectRepo.GetArtLinkByToken(ctx, token)
 	if err != nil {
 		return nil, err
@@ -111,7 +111,7 @@ func (s *ArtProjectRetrievalService) GetArtByToken(ctx context.Context, token st
 }
 
 // GetArtProjectByRevision retrieves a specific revision of an art project
-func (s *ArtProjectRetrievalService) GetArtProjectByRevision(ctx context.Context, userID, artProjectID, revisionID string) (*os.File, *models.ArtProject, error) {
+func (s *artProjectRetrievalService) GetArtProjectByRevision(ctx context.Context, userID, artProjectID, revisionID string) (*os.File, *models.ArtProject, error) {
 	slog.InfoContext(ctx, "Retrieving art project by revision", "artProjectID", artProjectID, "revisionID", revisionID, "userID", userID)
 
 	rev, err := s.artProjectRepo.GetRevisionByID(ctx, revisionID)
@@ -142,7 +142,7 @@ func (s *ArtProjectRetrievalService) GetArtProjectByRevision(ctx context.Context
 }
 
 // GetArtProjectByID retrieves the latest revision of a specified art project
-func (s *ArtProjectRetrievalService) GetArtProjectByID(ctx context.Context, userID, artProjectID string) (*os.File, *models.ArtProject, error) {
+func (s *artProjectRetrievalService) GetArtProjectByID(ctx context.Context, userID, artProjectID string) (*os.File, *models.ArtProject, error) {
 	slog.InfoContext(ctx, "Retrieving art project by ID", "artProjectID", artProjectID, "userID", userID)
 
 	artProject, err := s.artProjectRepo.GetArtProjectByID(ctx, artProjectID)
@@ -168,4 +168,4 @@ func (s *ArtProjectRetrievalService) GetArtProjectByID(ctx context.Context, user
 }
 
 // Ensure ArtProjectRetrievalService implements ArtProjectRetrievalServiceInterface
-var _ ArtProjectRetrievalServiceInterface = (*ArtProjectRetrievalService)(nil)
+var _ ArtProjectRetrievalServiceInterface = (*artProjectRetrievalService)(nil)

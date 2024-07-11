@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/mr-tron/base58"
+	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/crypto/chacha20poly1305"
 )
 
@@ -63,4 +64,13 @@ func DecodeArtID(artID string, secretKey []byte) (string, string, error) {
 	}
 
 	return data[0], data[1], nil
+}
+
+// HashPassword hashes the password using bcrypt
+func HashPassword(password string) (string, error) {
+	bytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
+	}
+	return string(bytes), nil
 }

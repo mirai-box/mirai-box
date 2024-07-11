@@ -12,17 +12,17 @@ import (
 )
 
 // CollectionService implements the CollectionServiceInterface
-type CollectionService struct {
+type collectionService struct {
 	repo repos.CollectionRepositoryInterface
 }
 
 // NewCollectionService creates a new instance of CollectionService
 func NewCollectionService(repo repos.CollectionRepositoryInterface) CollectionServiceInterface {
-	return &CollectionService{repo: repo}
+	return &collectionService{repo: repo}
 }
 
 // CreateCollection creates a new collection
-func (s *CollectionService) CreateCollection(ctx context.Context, userID, title string) (*models.Collection, error) {
+func (s *collectionService) CreateCollection(ctx context.Context, userID, title string) (*models.Collection, error) {
 	collection := &models.Collection{
 		ID:        uuid.New(),
 		UserID:    uuid.MustParse(userID),
@@ -55,7 +55,7 @@ func (s *CollectionService) CreateCollection(ctx context.Context, userID, title 
 }
 
 // FindByID finds a collection by its ID
-func (s *CollectionService) FindByID(ctx context.Context, id string) (*models.Collection, error) {
+func (s *collectionService) FindByID(ctx context.Context, id string) (*models.Collection, error) {
 	slog.InfoContext(ctx, "Finding collection by ID", "collectionID", id)
 
 	collection, err := s.repo.FindByID(ctx, id)
@@ -72,7 +72,7 @@ func (s *CollectionService) FindByID(ctx context.Context, id string) (*models.Co
 }
 
 // FindByUserID finds all collections by a user ID
-func (s *CollectionService) FindByUserID(ctx context.Context, userID string) ([]models.Collection, error) {
+func (s *collectionService) FindByUserID(ctx context.Context, userID string) ([]models.Collection, error) {
 	slog.InfoContext(ctx, "Finding collections by user ID", "userID", userID)
 
 	collections, err := s.repo.FindByUserID(ctx, userID)
@@ -92,4 +92,4 @@ func (s *CollectionService) FindByUserID(ctx context.Context, userID string) ([]
 }
 
 // Ensure CollectionService implements CollectionServiceInterface
-var _ CollectionServiceInterface = (*CollectionService)(nil)
+var _ CollectionServiceInterface = (*collectionService)(nil)

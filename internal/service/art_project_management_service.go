@@ -15,7 +15,7 @@ import (
 )
 
 // ArtProjectManagementService implements the ArtProjectManagementServiceInterface
-type ArtProjectManagementService struct {
+type artProjectManagementService struct {
 	artProjectRepo repos.ArtProjectRepositoryInterface
 	storageRepo    repos.StorageRepositoryInterface
 	stashRepo      repos.StashRepositoryInterface
@@ -29,7 +29,7 @@ func NewArtProjectManagementService(
 	stashRepo repos.StashRepositoryInterface,
 	secretKey []byte,
 ) ArtProjectManagementServiceInterface {
-	return &ArtProjectManagementService{
+	return &artProjectManagementService{
 		artProjectRepo: artProjectRepo,
 		storageRepo:    storageRepo,
 		stashRepo:      stashRepo,
@@ -38,7 +38,7 @@ func NewArtProjectManagementService(
 }
 
 // CreateArtProjectAndRevision creates a new art project along with its first revision
-func (aps *ArtProjectManagementService) CreateArtProjectAndRevision(ctx context.Context, userID string, fileData io.Reader, title, filename string) (*models.ArtProject, error) {
+func (aps *artProjectManagementService) CreateArtProjectAndRevision(ctx context.Context, userID string, fileData io.Reader, title, filename string) (*models.ArtProject, error) {
 	slog.InfoContext(ctx, "Creating new art project and revision",
 		"userID", userID,
 		"title", title,
@@ -118,7 +118,7 @@ func (aps *ArtProjectManagementService) CreateArtProjectAndRevision(ctx context.
 }
 
 // AddRevision adds a new revision to an existing art project
-func (aps *ArtProjectManagementService) AddRevision(ctx context.Context, userID, artProjectID string, fileData io.Reader, comment, filename string) (*models.Revision, error) {
+func (aps *artProjectManagementService) AddRevision(ctx context.Context, userID, artProjectID string, fileData io.Reader, comment, filename string) (*models.Revision, error) {
 	slog.InfoContext(ctx, "Adding new revision", "userID", userID, "artProjectID", artProjectID, "filename", filename)
 
 	artProject, err := aps.artProjectRepo.GetArtProjectByID(ctx, artProjectID)
@@ -181,7 +181,7 @@ func (aps *ArtProjectManagementService) AddRevision(ctx context.Context, userID,
 }
 
 // ListLatestRevisions lists the latest revisions of all art projects
-func (aps *ArtProjectManagementService) ListLatestRevisions(ctx context.Context, userID string) ([]models.Revision, error) {
+func (aps *artProjectManagementService) ListLatestRevisions(ctx context.Context, userID string) ([]models.Revision, error) {
 	slog.InfoContext(ctx, "Listing latest revisions")
 
 	revisions, err := aps.artProjectRepo.ListLatestRevisions(ctx, userID)
@@ -195,7 +195,7 @@ func (aps *ArtProjectManagementService) ListLatestRevisions(ctx context.Context,
 }
 
 // ListAllArtProjects lists all art projects
-func (aps *ArtProjectManagementService) ListAllArtProjects(ctx context.Context, userID string) ([]models.ArtProject, error) {
+func (aps *artProjectManagementService) ListAllArtProjects(ctx context.Context, userID string) ([]models.ArtProject, error) {
 	slog.InfoContext(ctx, "Listing all art projects")
 
 	artProjects, err := aps.artProjectRepo.ListAllArtProjects(ctx, userID)
@@ -209,7 +209,7 @@ func (aps *ArtProjectManagementService) ListAllArtProjects(ctx context.Context, 
 }
 
 // ListAllRevisions lists all revisions of a specific art project
-func (aps *ArtProjectManagementService) ListAllRevisions(ctx context.Context, artProjectID string) ([]models.Revision, error) {
+func (aps *artProjectManagementService) ListAllRevisions(ctx context.Context, artProjectID string) ([]models.Revision, error) {
 	slog.InfoContext(ctx, "Listing all revisions", "artProjectID", artProjectID)
 
 	revisions, err := aps.artProjectRepo.ListAllRevisions(ctx, artProjectID)
@@ -223,7 +223,7 @@ func (aps *ArtProjectManagementService) ListAllRevisions(ctx context.Context, ar
 }
 
 // determineNextVersion determines the next version number for a new revision of an art project
-func (aps *ArtProjectManagementService) determineNextVersion(ctx context.Context, artProjectID string) int {
+func (aps *artProjectManagementService) determineNextVersion(ctx context.Context, artProjectID string) int {
 	maxVersion, err := aps.artProjectRepo.GetMaxRevisionVersion(ctx, artProjectID)
 	if err != nil {
 		slog.ErrorContext(ctx, "Failed to retrieve maximum revision version", "error", err, "artProjectID", artProjectID)
@@ -233,4 +233,4 @@ func (aps *ArtProjectManagementService) determineNextVersion(ctx context.Context
 }
 
 // Ensure ArtProjectManagementService implements ArtProjectManagementServiceInterface
-var _ ArtProjectManagementServiceInterface = (*ArtProjectManagementService)(nil)
+var _ ArtProjectManagementServiceInterface = (*artProjectManagementService)(nil)

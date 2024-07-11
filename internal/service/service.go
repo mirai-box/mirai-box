@@ -92,3 +92,10 @@ type StashServiceInterface interface {
 	FindByID(ctx context.Context, id string) (*models.Stash, error)
 	FindByUserID(ctx context.Context, userID string) (*models.Stash, error)
 }
+
+// StorageUsageServiceInterface defines the contract for storage usage-related operations
+type StorageUsageServiceInterface interface {
+	CreateStorageUsage(ctx context.Context, userID string, quota int64) (*models.StorageUsage, error)
+	FindByUserID(ctx context.Context, userID string) (*models.StorageUsage, error)
+	UpdateStorageUsage(ctx context.Context, userID string, usedSpace int64) (*models.StorageUsage, error)
+}

@@ -11,19 +11,19 @@ import (
 )
 
 // StashService implements the StashServiceInterface
-type StashService struct {
+type stashService struct {
 	repo repos.StashRepositoryInterface
 }
 
 // NewStashService creates a new instance of StashService
 func NewStashService(repo repos.StashRepositoryInterface) StashServiceInterface {
-	return &StashService{
+	return &stashService{
 		repo: repo,
 	}
 }
 
 // CreateStash creates a new stash for a given user
-func (s *StashService) CreateStash(ctx context.Context, userID string) (*models.Stash, error) {
+func (s *stashService) CreateStash(ctx context.Context, userID string) (*models.Stash, error) {
 	slog.InfoContext(ctx, "Creating new stash", "userID", userID)
 
 	stash := &models.Stash{
@@ -41,7 +41,7 @@ func (s *StashService) CreateStash(ctx context.Context, userID string) (*models.
 }
 
 // FindByID retrieves a stash by its ID
-func (s *StashService) FindByID(ctx context.Context, id string) (*models.Stash, error) {
+func (s *stashService) FindByID(ctx context.Context, id string) (*models.Stash, error) {
 	slog.InfoContext(ctx, "Finding stash by ID", "stashID", id)
 
 	stash, err := s.repo.FindByID(ctx, id)
@@ -55,7 +55,7 @@ func (s *StashService) FindByID(ctx context.Context, id string) (*models.Stash, 
 }
 
 // FindByUserID retrieves a stash by user ID
-func (s *StashService) FindByUserID(ctx context.Context, userID string) (*models.Stash, error) {
+func (s *stashService) FindByUserID(ctx context.Context, userID string) (*models.Stash, error) {
 	slog.InfoContext(ctx, "Finding stash by user ID", "userID", userID)
 
 	stash, err := s.repo.FindByUserID(ctx, userID)
@@ -69,4 +69,4 @@ func (s *StashService) FindByUserID(ctx context.Context, userID string) (*models
 }
 
 // Ensure StashService implements StashServiceInterface
-var _ StashServiceInterface = (*StashService)(nil)
+var _ StashServiceInterface = (*stashService)(nil)

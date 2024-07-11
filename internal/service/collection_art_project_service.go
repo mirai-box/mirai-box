@@ -11,17 +11,17 @@ import (
 )
 
 // CollectionArtProjectService implements the CollectionArtProjectServiceInterface
-type CollectionArtProjectService struct {
+type collectionArtProjectService struct {
 	repo repos.CollectionArtProjectRepositoryInterface
 }
 
 // NewCollectionArtProjectService creates a new instance of CollectionArtProjectService
 func NewCollectionArtProjectService(repo repos.CollectionArtProjectRepositoryInterface) CollectionArtProjectServiceInterface {
-	return &CollectionArtProjectService{repo: repo}
+	return &collectionArtProjectService{repo: repo}
 }
 
 // AddArtProjectToCollection adds an art project to a collection
-func (s *CollectionArtProjectService) AddArtProjectToCollection(ctx context.Context, collectionID, artProjectID string) (*models.CollectionArtProject, error) {
+func (s *collectionArtProjectService) AddArtProjectToCollection(ctx context.Context, collectionID, artProjectID string) (*models.CollectionArtProject, error) {
 	cap := &models.CollectionArtProject{
 		CollectionID: uuid.MustParse(collectionID),
 		ArtProjectID: uuid.MustParse(artProjectID),
@@ -50,7 +50,7 @@ func (s *CollectionArtProjectService) AddArtProjectToCollection(ctx context.Cont
 }
 
 // FindByCollectionID finds all art projects in a collection by the collection ID
-func (s *CollectionArtProjectService) FindByCollectionID(ctx context.Context, collectionID string) ([]models.CollectionArtProject, error) {
+func (s *collectionArtProjectService) FindByCollectionID(ctx context.Context, collectionID string) ([]models.CollectionArtProject, error) {
 	slog.InfoContext(ctx, "Finding art projects by collection ID", "collectionID", collectionID)
 
 	caps, err := s.repo.FindByCollectionID(ctx, collectionID)
@@ -70,7 +70,7 @@ func (s *CollectionArtProjectService) FindByCollectionID(ctx context.Context, co
 }
 
 // FindByArtProjectID finds all collections containing a specific art project by the art project ID
-func (s *CollectionArtProjectService) FindByArtProjectID(ctx context.Context, artProjectID string) ([]models.CollectionArtProject, error) {
+func (s *collectionArtProjectService) FindByArtProjectID(ctx context.Context, artProjectID string) ([]models.CollectionArtProject, error) {
 	slog.InfoContext(ctx, "Finding collections by art project ID", "artProjectID", artProjectID)
 
 	caps, err := s.repo.FindByArtProjectID(ctx, artProjectID)
@@ -90,4 +90,4 @@ func (s *CollectionArtProjectService) FindByArtProjectID(ctx context.Context, ar
 }
 
 // Ensure CollectionArtProjectService implements CollectionArtProjectServiceInterface
-var _ CollectionArtProjectServiceInterface = (*CollectionArtProjectService)(nil)
+var _ CollectionArtProjectServiceInterface = (*collectionArtProjectService)(nil)

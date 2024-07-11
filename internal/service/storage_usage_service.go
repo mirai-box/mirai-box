@@ -10,25 +10,18 @@ import (
 	"github.com/mirai-box/mirai-box/internal/repos"
 )
 
-// StorageUsageServiceInterface defines the contract for storage usage-related operations
-type StorageUsageServiceInterface interface {
-	CreateStorageUsage(ctx context.Context, userID string, quota int64) (*models.StorageUsage, error)
-	FindByUserID(ctx context.Context, userID string) (*models.StorageUsage, error)
-	UpdateStorageUsage(ctx context.Context, userID string, usedSpace int64) (*models.StorageUsage, error)
-}
-
 // StorageUsageService implements the StorageUsageServiceInterface
-type StorageUsageService struct {
+type storageUsageService struct {
 	repo repos.StorageUsageRepositoryInterface
 }
 
 // NewStorageUsageService creates a new StorageUsageService
 func NewStorageUsageService(repo repos.StorageUsageRepositoryInterface) StorageUsageServiceInterface {
-	return &StorageUsageService{repo: repo}
+	return &storageUsageService{repo: repo}
 }
 
 // CreateStorageUsage creates a new storage usage record for a user
-func (s *StorageUsageService) CreateStorageUsage(ctx context.Context, userID string, quota int64) (*models.StorageUsage, error) {
+func (s *storageUsageService) CreateStorageUsage(ctx context.Context, userID string, quota int64) (*models.StorageUsage, error) {
 	slog.InfoContext(ctx, "Creating new storage usage", "userID", userID, "quota", quota)
 
 	storageUsage := &models.StorageUsage{
@@ -47,7 +40,7 @@ func (s *StorageUsageService) CreateStorageUsage(ctx context.Context, userID str
 }
 
 // FindByUserID retrieves the storage usage for a specific user
-func (s *StorageUsageService) FindByUserID(ctx context.Context, userID string) (*models.StorageUsage, error) {
+func (s *storageUsageService) FindByUserID(ctx context.Context, userID string) (*models.StorageUsage, error) {
 	slog.InfoContext(ctx, "Finding storage usage by user ID", "userID", userID)
 
 	storageUsage, err := s.repo.FindByUserID(ctx, userID)
@@ -61,7 +54,7 @@ func (s *StorageUsageService) FindByUserID(ctx context.Context, userID string) (
 }
 
 // UpdateStorageUsage updates the used space for a user's storage usage
-func (s *StorageUsageService) UpdateStorageUsage(ctx context.Context, userID string, usedSpace int64) (*models.StorageUsage, error) {
+func (s *storageUsageService) UpdateStorageUsage(ctx context.Context, userID string, usedSpace int64) (*models.StorageUsage, error) {
 	slog.InfoContext(ctx, "Updating storage usage", "userID", userID, "usedSpace", usedSpace)
 
 	storageUsage, err := s.repo.FindByUserID(ctx, userID)
@@ -82,4 +75,4 @@ func (s *StorageUsageService) UpdateStorageUsage(ctx context.Context, userID str
 }
 
 // Ensure StorageUsageService implements StorageUsageServiceInterface
-var _ StorageUsageServiceInterface = (*StorageUsageService)(nil)
+var _ StorageUsageServiceInterface = (*storageUsageService)(nil)
