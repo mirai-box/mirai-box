@@ -55,9 +55,9 @@ func SetupRoutes(db *gorm.DB, conf *config.Config) http.Handler {
 	saleService := service.NewSaleService(saleRepo)
 	storageUsageService := service.NewStorageUsageService(storageUsageRepo)
 	webPageService := service.NewWebPageService(webPageRepo)
-	artProjectManagementService := service.NewArtProjectManagementService(artProjectRepo, storageRepo, stashRepo)
+	artProjectManagementService := service.NewArtProjectManagementService(artProjectRepo, storageRepo, stashRepo, conf.SecretKey)
 	cookieStore := sessions.NewCookieStore([]byte(conf.SessionKey))
-	artProjectRetrievalService := service.NewArtProjectRetrievalService(artProjectRepo, storageRepo)
+	artProjectRetrievalService := service.NewArtProjectRetrievalService(artProjectRepo, storageRepo, conf.SecretKey)
 
 	m := authmiddleware.NewMiddleware(cookieStore, userService)
 
@@ -72,11 +72,12 @@ func SetupRoutes(db *gorm.DB, conf *config.Config) http.Handler {
 	saleHandler := handlers.NewSaleHandler(saleService)
 	storageUsageHandler := handlers.NewStorageUsageHandler(storageUsageService)
 	webPageHandler := handlers.NewWebPageHandler(webPageService)
-	artProjectRetrievalHandler := handlers.NewArtProjectRetrievalHandler(artProjectRetrievalService)
+	artProjectRetrievalHandler := handlers.NewArtProjectRetrievalHandler(artProjectRetrievalService, revisionService)
 
 	r.Post("/login", userHandler.Login)
 	r.Get("/login/check", userHandler.LoginCheck)
-	r.Get("/art/{artID}", artProjectRetrievalHandler.SharedPictureHandler)
+	r.Get("/art/{artID}", artProjectRetrievalHandler.GetArtByID)
+	// r.Post("/art/link", artProjectRetrievalHandler.CreateArtLinkHandler)
 
 	r.Route("/self", func(r chi.Router) {
 		r.Use(m.AuthMiddleware)

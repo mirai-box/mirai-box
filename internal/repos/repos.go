@@ -9,8 +9,6 @@ import (
 	"github.com/mirai-box/mirai-box/internal/models"
 )
 
-
-
 // StorageUsageRepositoryInterface defines the contract for storage usage-related database operations
 type StorageUsageRepositoryInterface interface {
 	Create(ctx context.Context, storageUsage *models.StorageUsage) error
@@ -30,10 +28,12 @@ type ArtProjectRepositoryInterface interface {
 	ListAllArtProjects(ctx context.Context, userID string) ([]models.ArtProject, error)
 	ListAllRevisions(ctx context.Context, artProjectID string) ([]models.Revision, error)
 	GetMaxRevisionVersion(ctx context.Context, artProjectID string) (int, error)
-	GetRevisionByArtID(ctx context.Context, artID string) (*models.Revision, error)
 	GetRevisionByID(ctx context.Context, id string) (*models.Revision, error)
 	GetArtProjectByID(ctx context.Context, id string) (*models.ArtProject, error)
 	FindByStashID(ctx context.Context, stashID string) ([]models.ArtProject, error)
+	CreateArtLink(ctx context.Context, artLink *models.ArtLink) error
+	UpdateArtLink(ctx context.Context, artLink *models.ArtLink) error
+	GetArtLinkByToken(ctx context.Context, token string) (*models.ArtLink, error)
 }
 
 // StorageRepositoryInterface defines the contract for storage-related operations

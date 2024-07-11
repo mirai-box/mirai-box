@@ -19,6 +19,7 @@ type ArtProjectManagementService struct {
 	artProjectRepo repos.ArtProjectRepositoryInterface
 	storageRepo    repos.StorageRepositoryInterface
 	stashRepo      repos.StashRepositoryInterface
+	secretKey      []byte
 }
 
 // NewArtProjectManagementService creates a new instance of ArtProjectManagementService
@@ -26,11 +27,13 @@ func NewArtProjectManagementService(
 	artProjectRepo repos.ArtProjectRepositoryInterface,
 	storageRepo repos.StorageRepositoryInterface,
 	stashRepo repos.StashRepositoryInterface,
+	secretKey []byte,
 ) ArtProjectManagementServiceInterface {
 	return &ArtProjectManagementService{
 		artProjectRepo: artProjectRepo,
 		storageRepo:    storageRepo,
 		stashRepo:      stashRepo,
+		secretKey:      secretKey,
 	}
 }
 
@@ -72,9 +75,17 @@ func (aps *ArtProjectManagementService) CreateArtProjectAndRevision(ctx context.
 		LatestRevisionID: revisionID,
 	}
 
+	artID, err := GenerateArtID(revisionID, stash.UserID, aps.secretKey)
+	if err != nil {
+		slog.ErrorContext(ctx, "Failed to generate artID", "error", err, "userID", userID)
+		return nil, err
+	}
+
 	revision := &models.Revision{
 		ID:           revisionID,
+		ArtID:        artID,
 		ArtProjectID: artProject.ID,
+		UserID:       artProject.UserID,
 		Version:      1,
 		CreatedAt:    time.Now(),
 	}
@@ -118,9 +129,17 @@ func (aps *ArtProjectManagementService) AddRevision(ctx context.Context, userID,
 
 	revisionID := uuid.New()
 
+	artID, err := GenerateArtID(revisionID, artProject.UserID, aps.secretKey)
+	if err != nil {
+		slog.ErrorContext(ctx, "Failed to generate artID", "error", err, "userID", userID)
+		return nil, err
+	}
+
 	revision := &models.Revision{
 		ID:           revisionID,
+		ArtID:        artID,
 		ArtProjectID: artProject.ID,
+		UserID:       artProject.UserID,
 		Version:      aps.determineNextVersion(ctx, artProjectID),
 		CreatedAt:    time.Now(),
 		Comment:      comment,

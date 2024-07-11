@@ -4,13 +4,18 @@ import (
 	"context"
 	"io"
 	"os"
+	"time"
+
+	"github.com/google/uuid"
 
 	"github.com/mirai-box/mirai-box/internal/models"
 )
 
 // ArtProjectRetrievalServiceInterface defines the interface for retrieving art projects and revisions.
 type ArtProjectRetrievalServiceInterface interface {
-	GetSharedArtProject(ctx context.Context, artID string) (*os.File, *models.ArtProject, error)
+	GetRevisionByArtID(ctx context.Context, artID string) (*models.Revision, error)
+	CreateArtLink(ctx context.Context, revisionID uuid.UUID, duration time.Duration, oneTime bool, unlimited bool) (string, error)
+	GetArtByToken(ctx context.Context, token string) (*models.Revision, error)
 	GetArtProjectByRevision(ctx context.Context, userID, artProjectID, revisionID string) (*os.File, *models.ArtProject, error)
 	GetArtProjectByID(ctx context.Context, userID, artProjectID string) (*os.File, *models.ArtProject, error)
 }

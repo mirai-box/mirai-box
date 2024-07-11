@@ -1,7 +1,9 @@
 package config
 
 import (
+	"encoding/hex"
 	"fmt"
+	"log"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -26,6 +28,7 @@ type Config struct {
 	StorageRoot string
 	ProjectRoot string
 	SessionKey  string
+	SecretKey   []byte
 }
 
 type DatabaseConfig struct {
@@ -47,12 +50,29 @@ func GetApplicationConfig() (*Config, error) {
 		return nil, fmt.Errorf("SESSION_KEY environment variable is not set")
 	}
 
+	hexKey := os.Getenv("SECRET_KEY")
+	if sessionKey == "" {
+		return nil, fmt.Errorf("SECRET_KEY environment variable is not set")
+	}
+
+	// Decode the hex string to bytes
+	secretKey, err := hex.DecodeString(hexKey)
+	if err != nil {
+		log.Fatalf("Failed to decode hex key: %v", err)
+	}
+
+	// Check the length of the key
+	if len(secretKey) != 32 {
+		return nil, fmt.Errorf("Invalid key length: %d bytes. Key must be 32 bytes long.", len(secretKey))
+	}
+
 	return &Config{
 		Stage:       getEnv("APP_ENV", defaultAppStage),
 		Port:        getEnv("PORT", defaultPort),
 		StorageRoot: storageRoot,
 		ProjectRoot: projectRoot,
 		SessionKey:  sessionKey,
+		SecretKey:   secretKey,
 		LogLevel:    parseLogLevel(getEnv("LOG_LEVEL", defaultDebugLevel)),
 		Database:    GetDatabaseConfig(),
 	}, nil

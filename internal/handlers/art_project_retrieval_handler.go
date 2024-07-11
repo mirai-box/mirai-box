@@ -1,35 +1,104 @@
 package handlers
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
+	"gorm.io/gorm"
+
 	"github.com/mirai-box/mirai-box/internal/middleware"
 	"github.com/mirai-box/mirai-box/internal/models"
 	"github.com/mirai-box/mirai-box/internal/service"
 )
 
-type ArtProjectRetrievalHandler struct {
-	service service.ArtProjectRetrievalServiceInterface
+type CreateArtLinkRequest struct {
+	RevisionID uuid.UUID `json:"revision_id"`
+	Duration   int       `json:"duration"` // in minutes
+	OneTime    bool      `json:"one_time"`
+	Unlimited  bool      `json:"unlimited,omitempty"`
 }
 
-func NewArtProjectRetrievalHandler(service service.ArtProjectRetrievalServiceInterface) *ArtProjectRetrievalHandler {
+type CreateArtLinkResponse struct {
+	Link string `json:"link"`
+}
+
+type ArtProjectRetrievalHandler struct {
+	service        service.ArtProjectRetrievalServiceInterface
+	revisonService service.RevisionServiceInterface
+}
+
+func NewArtProjectRetrievalHandler(
+	service service.ArtProjectRetrievalServiceInterface,
+	revisonService service.RevisionServiceInterface,
+) *ArtProjectRetrievalHandler {
 	return &ArtProjectRetrievalHandler{
-		service: service,
+		service:        service,
+		revisonService: revisonService,
 	}
 }
 
-// SharedPictureHandler handles retrieval of a shared picture by art ID
-func (h *ArtProjectRetrievalHandler) SharedPictureHandler(w http.ResponseWriter, r *http.Request) {
+func (h *ArtProjectRetrievalHandler) GetArtByID(w http.ResponseWriter, r *http.Request) {
 	artID := chi.URLParam(r, "artID")
-	slog.Debug("get shared picture by art id", "artID", artID)
+	ctx := r.Context()
 
-	h.handleDownload(w, r, func() (io.ReadCloser, *models.ArtProject, error) {
-		return h.service.GetSharedArtProject(r.Context(), artID)
-	}, artID)
+	rev, err := h.service.GetRevisionByArtID(ctx, artID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	http.ServeFile(w, r, rev.FilePath)
+}
+
+// CreateArtLinkHandler handles the creation of art links
+func (h *ArtProjectRetrievalHandler) CreateArtLinkHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	user, ok := middleware.GetUserFromContext(ctx)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	var req CreateArtLinkRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+		return
+	}
+
+	rev, err := h.revisonService.FindByID(ctx, req.RevisionID.String())
+	if err != nil {
+		http.Error(w, "Failed to find revision by id", http.StatusInternalServerError)
+		return
+	}
+	if user.ID.String() != rev.UserID.String() {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+	}
+
+	duration := time.Duration(req.Duration) * time.Minute
+	if req.Unlimited {
+		duration = 0 // Will be handled in service layer
+	}
+
+	link, err := h.service.CreateArtLink(ctx, req.RevisionID, duration, req.OneTime, req.Unlimited)
+	if err != nil {
+		http.Error(w, "Failed to create art link", http.StatusInternalServerError)
+		return
+	}
+
+	res := CreateArtLinkResponse{Link: link}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(res)
 }
 
 // RevisionDownload handles retrieval of a picture by picture ID and revision ID

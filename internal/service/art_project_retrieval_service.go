@@ -2,9 +2,13 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
+	"time"
+
+	"github.com/google/uuid"
 
 	"github.com/mirai-box/mirai-box/internal/models"
 	"github.com/mirai-box/mirai-box/internal/repos"
@@ -14,49 +18,105 @@ import (
 type ArtProjectRetrievalService struct {
 	artProjectRepo repos.ArtProjectRepositoryInterface
 	storageRepo    repos.StorageRepositoryInterface
+	secretKey      []byte
 }
 
 // NewArtProjectRetrievalService creates a new instance of ArtProjectRetrievalService
-func NewArtProjectRetrievalService(artProjectRepo repos.ArtProjectRepositoryInterface, storageRepo repos.StorageRepositoryInterface) ArtProjectRetrievalServiceInterface {
+func NewArtProjectRetrievalService(
+	artProjectRepo repos.ArtProjectRepositoryInterface,
+	storageRepo repos.StorageRepositoryInterface,
+	secretKey []byte,
+) ArtProjectRetrievalServiceInterface {
 	return &ArtProjectRetrievalService{
 		artProjectRepo: artProjectRepo,
 		storageRepo:    storageRepo,
+		secretKey:      secretKey,
 	}
 }
 
-// GetSharedArtProject retrieves the latest shared revision of an art project
-func (aps *ArtProjectRetrievalService) GetSharedArtProject(ctx context.Context, artID string) (*os.File, *models.ArtProject, error) {
-	slog.InfoContext(ctx, "Retrieving shared art project", "artID", artID)
-
-	rev, err := aps.artProjectRepo.GetRevisionByArtID(ctx, artID)
+func (s *ArtProjectRetrievalService) GetRevisionByArtID(ctx context.Context, artID string) (*models.Revision, error) {
+	revisionID, userID, err := DecodeArtID(artID, s.secretKey)
 	if err != nil {
-		slog.ErrorContext(ctx, "Failed to get revision for art ID", "error", err, "artID", artID)
-		return nil, nil, err
+		slog.ErrorContext(ctx, "Failed to decode artID", "error", err, "artID", artID)
+		return nil, err
 	}
 
-	artProject, err := aps.artProjectRepo.GetArtProjectByID(ctx, rev.ArtProjectID.String())
+	revision, err := s.artProjectRepo.GetRevisionByID(ctx, revisionID)
 	if err != nil {
-		slog.ErrorContext(ctx, "Failed to get art project", "error", err, "artProjectID", rev.ArtProjectID)
-		return nil, nil, err
+		slog.ErrorContext(ctx, "Failed get revision by ID", "error", err, "revisionID", revisionID)
+		return nil, err
 	}
 
-	userID := artProject.Stash.UserID.String()
-
-	file, err := aps.storageRepo.GetRevision(ctx, userID, artProject.ID.String(), rev.Version)
-	if err != nil {
-		slog.ErrorContext(ctx, "Failed to get file from storage", "error", err, "artProjectID", artProject.ID)
-		return nil, nil, err
+	if revision.UserID.String() != userID {
+		slog.ErrorContext(ctx, "userID does not match the revision's userID", "revision.UserID", revision.UserID, "userID", userID)
+		return nil, errors.New("userID does not match the revision's userID")
 	}
 
-	slog.InfoContext(ctx, "Successfully retrieved shared art project", "artID", artID, "userID", userID)
-	return file, artProject, nil
+	return revision, nil
+}
+
+// CreateArtLink creates an art link with expiry and one-time use functionality
+func (s *ArtProjectRetrievalService) CreateArtLink(ctx context.Context,
+	revisionID uuid.UUID, duration time.Duration,
+	oneTime bool, unlimited bool) (string, error) {
+
+	token, err := GenerateSecureToken(32) // 32-byte secure token
+	if err != nil {
+		return "", err
+	}
+
+	expiresAt := time.Now().Add(duration)
+	if unlimited {
+		expiresAt = time.Time{} // Zero value of time.Time to represent no expiration
+	}
+
+	artLink := models.ArtLink{
+		Token:      token,
+		RevisionID: revisionID,
+		ExpiresAt:  expiresAt,
+		OneTime:    oneTime,
+	}
+
+	if err := s.artProjectRepo.CreateArtLink(ctx, &artLink); err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("/art/%s", token), nil
+}
+
+// GetArtByToken retrieves the art using the provided token and validates it
+func (s *ArtProjectRetrievalService) GetArtByToken(ctx context.Context, token string) (*models.Revision, error) {
+	artLink, err := s.artProjectRepo.GetArtLinkByToken(ctx, token)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check for expiry
+	if time.Now().After(artLink.ExpiresAt) {
+		return nil, errors.New("link has expired")
+	}
+
+	// Check if one-time use and already used
+	if artLink.OneTime && artLink.Used {
+		return nil, errors.New("link has already been used")
+	}
+
+	// Mark as used if one-time use
+	if artLink.OneTime {
+		artLink.Used = true
+		if err := s.artProjectRepo.UpdateArtLink(ctx, artLink); err != nil {
+			return nil, err
+		}
+	}
+
+	return &artLink.Revision, nil
 }
 
 // GetArtProjectByRevision retrieves a specific revision of an art project
-func (aps *ArtProjectRetrievalService) GetArtProjectByRevision(ctx context.Context, userID, artProjectID, revisionID string) (*os.File, *models.ArtProject, error) {
+func (s *ArtProjectRetrievalService) GetArtProjectByRevision(ctx context.Context, userID, artProjectID, revisionID string) (*os.File, *models.ArtProject, error) {
 	slog.InfoContext(ctx, "Retrieving art project by revision", "artProjectID", artProjectID, "revisionID", revisionID, "userID", userID)
 
-	rev, err := aps.artProjectRepo.GetRevisionByID(ctx, revisionID)
+	rev, err := s.artProjectRepo.GetRevisionByID(ctx, revisionID)
 	if err != nil {
 		slog.ErrorContext(ctx, "Failed to get revision", "error", err, "revisionID", revisionID)
 		return nil, nil, err
@@ -67,13 +127,13 @@ func (aps *ArtProjectRetrievalService) GetArtProjectByRevision(ctx context.Conte
 		return nil, nil, fmt.Errorf("revision does not belong to the specified art project")
 	}
 
-	artProject, err := aps.artProjectRepo.GetArtProjectByID(ctx, rev.ArtProjectID.String())
+	artProject, err := s.artProjectRepo.GetArtProjectByID(ctx, rev.ArtProjectID.String())
 	if err != nil {
 		slog.ErrorContext(ctx, "Failed to get art project", "error", err, "artProjectID", rev.ArtProjectID)
 		return nil, nil, err
 	}
 
-	file, err := aps.storageRepo.GetRevision(ctx, userID, artProject.ID.String(), rev.Version)
+	file, err := s.storageRepo.GetRevision(ctx, userID, artProject.ID.String(), rev.Version)
 	if err != nil {
 		slog.ErrorContext(ctx, "Failed to get file from storage", "error", err, "revisionID", revisionID)
 		return nil, nil, err
@@ -84,22 +144,22 @@ func (aps *ArtProjectRetrievalService) GetArtProjectByRevision(ctx context.Conte
 }
 
 // GetArtProjectByID retrieves the latest revision of a specified art project
-func (aps *ArtProjectRetrievalService) GetArtProjectByID(ctx context.Context, userID, artProjectID string) (*os.File, *models.ArtProject, error) {
+func (s *ArtProjectRetrievalService) GetArtProjectByID(ctx context.Context, userID, artProjectID string) (*os.File, *models.ArtProject, error) {
 	slog.InfoContext(ctx, "Retrieving art project by ID", "artProjectID", artProjectID, "userID", userID)
 
-	artProject, err := aps.artProjectRepo.GetArtProjectByID(ctx, artProjectID)
+	artProject, err := s.artProjectRepo.GetArtProjectByID(ctx, artProjectID)
 	if err != nil {
 		slog.ErrorContext(ctx, "Failed to get art project", "error", err, "artProjectID", artProjectID)
 		return nil, nil, err
 	}
 
-	rev, err := aps.artProjectRepo.GetRevisionByID(ctx, artProject.LatestRevisionID.String())
+	rev, err := s.artProjectRepo.GetRevisionByID(ctx, artProject.LatestRevisionID.String())
 	if err != nil {
 		slog.ErrorContext(ctx, "Failed to get latest revision", "error", err, "revisionID", artProject.LatestRevisionID)
 		return nil, nil, err
 	}
 
-	file, err := aps.storageRepo.GetRevision(ctx, userID, artProject.ID.String(), rev.Version)
+	file, err := s.storageRepo.GetRevision(ctx, userID, artProject.ID.String(), rev.Version)
 	if err != nil {
 		slog.ErrorContext(ctx, "Failed to get file from storage", "error", err, "revisionID", artProject.LatestRevisionID)
 		return nil, nil, err

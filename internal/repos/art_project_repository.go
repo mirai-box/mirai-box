@@ -146,7 +146,7 @@ func (r *ArtProjectRepository) ListAllRevisions(ctx context.Context, artProjectI
 func (r *ArtProjectRepository) GetMaxRevisionVersion(ctx context.Context, artProjectID string) (int, error) {
 	slog.InfoContext(ctx, "Getting max revision version for art project", "projectID", artProjectID)
 	var maxVersion int
-	if err := r.DB.Model(&models.Revision{}).Where("art_project_id = ?", artProjectID).Select("MAX(version)").Scan(&maxVersion).Error; err != nil {
+	if err := r.DB.WithContext(ctx).Model(&models.Revision{}).Where("art_project_id = ?", artProjectID).Select("MAX(version)").Scan(&maxVersion).Error; err != nil {
 		slog.ErrorContext(ctx, "Failed to get max revision version", "error", err, "projectID", artProjectID)
 		return 0, err
 	}
@@ -154,16 +154,23 @@ func (r *ArtProjectRepository) GetMaxRevisionVersion(ctx context.Context, artPro
 	return maxVersion, nil
 }
 
-// GetRevisionByArtID retrieves a revision by its art ID
-func (r *ArtProjectRepository) GetRevisionByArtID(ctx context.Context, artID string) (*models.Revision, error) {
-	slog.InfoContext(ctx, "Getting revision by art ID", "artID", artID)
-	var revision models.Revision
-	if err := r.DB.Preload("ArtProject").First(&revision, "art_id = ?", artID).Error; err != nil {
-		slog.ErrorContext(ctx, "Failed to get revision by art ID", "error", err, "artID", artID)
+// GetArtLinkByToken retrieves an art link by its token
+func (r *ArtProjectRepository) GetArtLinkByToken(ctx context.Context, token string) (*models.ArtLink, error) {
+	var artLink models.ArtLink
+	if err := r.DB.Preload("Revision").WithContext(ctx).First(&artLink, "token = ?", token).Error; err != nil {
 		return nil, err
 	}
-	slog.InfoContext(ctx, "Revision retrieved successfully", "artID", artID, "revisionID", revision.ID)
-	return &revision, nil
+	return &artLink, nil
+}
+
+// CreateArtLink creates a new art link
+func (r *ArtProjectRepository) CreateArtLink(ctx context.Context, artLink *models.ArtLink) error {
+	return r.DB.WithContext(ctx).Create(artLink).Error
+}
+
+// UpdateArtLink updates an existing art link
+func (r *ArtProjectRepository) UpdateArtLink(ctx context.Context, artLink *models.ArtLink) error {
+    return r.DB.WithContext(ctx).Save(artLink).Error
 }
 
 // GetRevisionByID retrieves a revision by its ID

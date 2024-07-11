@@ -91,6 +91,7 @@ func runMigrations(db *gorm.DB) error {
 		&models.Sale{},
 		&models.StorageUsage{},
 		&models.WebPage{},
+		&models.ArtLink{},
 	); err != nil {
 		return err
 	}
