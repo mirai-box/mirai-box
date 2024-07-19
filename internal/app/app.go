@@ -10,9 +10,9 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/mirai-box/mirai-box/internal/config"
-	"github.com/mirai-box/mirai-box/internal/handlers"
-	authmiddleware "github.com/mirai-box/mirai-box/internal/middleware"
-	"github.com/mirai-box/mirai-box/internal/repos"
+	"github.com/mirai-box/mirai-box/internal/handler"
+	am "github.com/mirai-box/mirai-box/internal/middleware"
+	"github.com/mirai-box/mirai-box/internal/repo"
 	"github.com/mirai-box/mirai-box/internal/service"
 )
 
@@ -34,133 +34,59 @@ func SetupRoutes(db *gorm.DB, conf *config.Config) http.Handler {
 	r.Use(corsConfig.Handler)
 
 	// Initialize repositories
-	storageRepo := repos.NewStorageRepository(conf.StorageRoot)
-	userRepo := repos.NewUserRepository(db)
-	stashRepo := repos.NewStashRepository(db)
-	artProjectRepo := repos.NewArtProjectRepository(db)
-	revisionRepo := repos.NewRevisionRepository(db)
-	collectionRepo := repos.NewCollectionRepository(db)
-	collectionArtProjectRepo := repos.NewCollectionArtProjectRepository(db)
-	saleRepo := repos.NewSaleRepository(db)
-	storageUsageRepo := repos.NewStorageUsageRepository(db)
-	webPageRepo := repos.NewWebPageRepository(db)
+	ur := repo.NewUserRepository(db)
+	ar := repo.NewArtProjectRepository(db)
+	fsr := repo.NewFileStorageRepository(db, conf.StorageRoot)
+	wpr := repo.NewWebPageRepository(db)
 
 	// Initialize services
-	userService := service.NewUserService(userRepo)
-	stashService := service.NewStashService(stashRepo)
-	artProjectService := service.NewArtProjectService(artProjectRepo, stashRepo)
-	revisionService := service.NewRevisionService(revisionRepo)
-	collectionService := service.NewCollectionService(collectionRepo)
-	collectionArtProjectService := service.NewCollectionArtProjectService(collectionArtProjectRepo)
-	saleService := service.NewSaleService(saleRepo)
-	storageUsageService := service.NewStorageUsageService(storageUsageRepo)
-	webPageService := service.NewWebPageService(webPageRepo)
-	artProjectManagementService := service.NewArtProjectManagementService(artProjectRepo, storageRepo, stashRepo, conf.SecretKey)
-	cookieStore := sessions.NewCookieStore([]byte(conf.SessionKey))
-	artProjectRetrievalService := service.NewArtProjectRetrievalService(artProjectRepo, storageRepo, conf.SecretKey)
+	userService := service.NewUserService(ur)
+	artProjectService := service.NewArtProjectService(ur, ar, fsr, conf.SecretKey)
+	webPageService := service.NewWebPageService(wpr)
 
-	m := authmiddleware.NewMiddleware(cookieStore, userService)
+	cookieStore := sessions.NewCookieStore([]byte(conf.SessionKey))
+	m := am.NewMiddleware(cookieStore, userService)
 
 	// Initialize handlers
-	userHandler := handlers.NewUserHandler(userService, stashService, cookieStore)
-	stashHandler := handlers.NewStashHandler(stashService)
-	artProjectHandler := handlers.NewArtProjectHandler(artProjectService)
-	artProjectManagementHandler := *handlers.NewArtProjectManagementHandler(artProjectManagementService, artProjectService)
-	revisionHandler := handlers.NewRevisionHandler(revisionService)
-	collectionHandler := handlers.NewCollectionHandler(collectionService)
-	collectionArtProjectHandler := handlers.NewCollectionArtProjectHandler(collectionArtProjectService)
-	saleHandler := handlers.NewSaleHandler(saleService)
-	storageUsageHandler := handlers.NewStorageUsageHandler(storageUsageService)
-	webPageHandler := handlers.NewWebPageHandler(webPageService)
-	artProjectRetrievalHandler := handlers.NewArtProjectRetrievalHandler(artProjectRetrievalService, revisionService)
+	userHandler := handler.NewUserHandler(userService, cookieStore)
+	artProjectHandler := handler.NewArtProjectHandler(artProjectService)
+	webPageHandler := handler.NewWebPageHandler(webPageService)
 
 	r.Post("/login", userHandler.Login)
 	r.Get("/login/check", userHandler.LoginCheck)
-	r.Get("/art/{artID}", artProjectRetrievalHandler.GetArtByID)
+	r.Get("/art/{artID}", artProjectHandler.GetArtByID)
 
 	r.Route("/self", func(r chi.Router) {
 		r.Use(m.AuthMiddleware)
 		r.Use(m.RequireRole("self", "any"))
 
-		r.Get("/stash", stashHandler.MyStash)
-		r.Get("/sales", saleHandler.MySales)
-
+		r.Get("/stash", userHandler.MyStash)
 		r.Post("/webpages", webPageHandler.CreateWebPage)
 		r.Get("/webpages", webPageHandler.MyWebPages)
-		r.Get("/webpages/{id}", webPageHandler.MyWebPageByID)
-		r.Put("/webpages/{id}", webPageHandler.UpdateWebPage)
+		r.With(am.ValidateUUID("id")).Get("/webpages/{id}", webPageHandler.MyWebPageByID)
+		r.With(am.ValidateUUID("id")).Put("/webpages/{id}", webPageHandler.UpdateWebPage)
+		r.With(am.ValidateUUID("id")).Delete("/webpages/{id}", webPageHandler.DeleteWebPage)
 
-		r.Get("/artprojects", artProjectManagementHandler.MyArtProjects)
-		r.Get("/artprojects/{id}", artProjectManagementHandler.MyArtProjectByID)
+		r.Get("/artprojects", artProjectHandler.MyArtProjects)
+		r.With(am.ValidateUUID("id")).Get("/artprojects/{id}", artProjectHandler.MyArtProjectByID)
 
-		r.Get("/artprojects/{id}/revisions", artProjectManagementHandler.ListRevisions)
-		r.Post("/artprojects/{id}/revisions", artProjectManagementHandler.AddRevision)
-
-		r.Post("/artprojects", artProjectManagementHandler.CreateArtProject)
-		r.Get("/artprojects/{artID}/revisions/{revisionID}", artProjectRetrievalHandler.RevisionDownload)
+		r.With(am.ValidateUUID("id")).
+			Get("/artprojects/{id}/revisions", artProjectHandler.ListRevisions)
+		r.With(am.ValidateUUID("id")).
+			Post("/artprojects/{id}/revisions", artProjectHandler.AddRevision)
+		r.Post("/artprojects", artProjectHandler.CreateArtProject)
+		r.With(am.ValidateUUID("artID")).With(am.ValidateUUID("revisionID")).
+			Get("/artprojects/{artID}/revisions/{revisionID}", artProjectHandler.RevisionDownload)
 	})
 
 	// Routes
 	r.Route("/api", func(r chi.Router) {
 		// Public routes
+		// user registration route
 		r.Post("/users", userHandler.CreateUser)
 
 		r.Group(func(r chi.Router) {
-			r.Use(m.RequireRole("any"))
-			r.Post("/webpages", webPageHandler.CreateWebPage)
-		})
-
-		r.Group(func(r chi.Router) {
-			r.Use(m.RequireRole("admin"))
-
-			// User routes
-			r.Get("/users/{id}", userHandler.GetUser)
-			r.Put("/users/{id}", userHandler.UpdateUser)
-			r.Delete("/users/{id}", userHandler.DeleteUser)
-
-			// Stash routes
-			r.Get("/stashes/{id}", stashHandler.FindByID)
-			r.Get("/users/{userId}/stash", stashHandler.FindByUserID)
-
-			// ArtProject routes
-			r.Post("/artprojects", artProjectHandler.CreateArtProject)
-			// r.Get("/artprojects/{id}", artProjectHandler.GetArtProject)
-			r.Put("/artprojects/{id}", artProjectHandler.UpdateArtProject)
-			r.Delete("/artprojects/{id}", artProjectHandler.DeleteArtProject)
-			r.Get("/stashes/{stashId}/artprojects", artProjectHandler.ListStashArtProjects)
-
-			// Revision routes
-			r.Post("/artprojects/{artProjectId}/revisions", revisionHandler.CreateRevision)
-			r.Get("/revisions/{id}", revisionHandler.GetRevision)
-			r.Get("/artprojects/{artProjectId}/revisions", revisionHandler.ListArtProjectRevisions)
-
-			// Collection routes
-			r.Post("/collections", collectionHandler.CreateCollection)
-			r.Get("/collections/{id}", collectionHandler.GetCollection)
-			r.Put("/collections/{id}", collectionHandler.UpdateCollection)
-			r.Delete("/collections/{id}", collectionHandler.DeleteCollection)
-			r.Get("/users/{userId}/collections", collectionHandler.ListUserCollections)
-
-			// CollectionArtProject routes
-			r.Post("/collections/{collectionId}/artprojects/{artProjectId}", collectionArtProjectHandler.AddArtProjectToCollection)
-			r.Delete("/collections/{collectionId}/artprojects/{artProjectId}", collectionArtProjectHandler.RemoveArtProjectFromCollection)
-			r.Get("/collections/{collectionId}/artprojects", collectionArtProjectHandler.ListCollectionArtProjects)
-
-			// Sale routes
-			r.Post("/sales", saleHandler.CreateSale)
-			r.Get("/sales/{id}", saleHandler.GetSale)
-			r.Get("/users/{userId}/sales", saleHandler.ListUserSales)
-			r.Get("/artprojects/{artProjectId}/sales", saleHandler.ListArtProjectSales)
-
-			// StorageUsage routes
-			r.Get("/users/{userId}/storage", storageUsageHandler.GetUserStorageUsage)
-			r.Put("/users/{userId}/storage", storageUsageHandler.UpdateUserStorageUsage)
-
-			// WebPage routes
-			// r.Post("/webpages", webPageHandler.CreateWebPage)
-			r.Get("/webpages/{id}", webPageHandler.GetWebPage)
-			r.Delete("/webpages/{id}", webPageHandler.DeleteWebPage)
-			r.Get("/users/{userId}/webpages", webPageHandler.ListUserWebPages)
+			// r.Use(m.RequireRole("admin"))
 		})
 	})
 
