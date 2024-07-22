@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 
@@ -26,64 +25,84 @@ type UserService interface {
 	GetStashByUserID(ctx context.Context, userID string) (*model.Stash, error)
 }
 
-// UserService implements the UserServiceInterface
 type userService struct {
 	userRepo repo.UserRepository
 }
 
-// NewUserService creates a new UserService
 func NewUserService(repo repo.UserRepository) UserService {
 	return &userService{userRepo: repo}
 }
 
-// Authenticate verifies user credentials and returns the user if valid
 func (s *userService) Authenticate(ctx context.Context, username, password string) (*model.User, error) {
-	slog.InfoContext(ctx, "Authenticating user", "username", username)
+	logger := slog.With("method", "Authenticate", "username", username)
+
+	if username == "" || password == "" {
+		logger.Warn("Invalid input parameters")
+		return nil, model.ErrInvalidInput
+	}
 
 	user, err := s.userRepo.FindUserByUsername(ctx, username)
 	if err != nil {
-		slog.ErrorContext(ctx, "Failed to find user", "error", err, "username", username)
+		logger.Error("Failed to find user", "error", err)
 		return nil, err
-	}
-	if user == nil {
-		slog.ErrorContext(ctx, "Failed to find user", "username", username)
-		return nil, fmt.Errorf("user not found")
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
-		slog.ErrorContext(ctx, "Invalid credentials", "error", err, "username", username)
-		return nil, errors.New("invalid credentials")
+		logger.Warn("Invalid credentials")
+		return nil, model.ErrInvalidCredentials
 	}
 
-	slog.InfoContext(ctx, "User authenticated successfully", "username", username)
+	logger.Info("User authenticated successfully")
 	return user, nil
 }
 
-// GetUser retrieves a user by their ID
 func (s *userService) GetUser(ctx context.Context, id string) (*model.User, error) {
-	slog.InfoContext(ctx, "Finding user by ID", "userID", id)
+	logger := slog.With("method", "GetUser", "userID", id)
+
+	if id == "" {
+		logger.Warn("Invalid input: empty id")
+		return nil, model.ErrInvalidInput
+	}
 
 	user, err := s.userRepo.FindUserByID(ctx, id)
 	if err != nil {
-		slog.ErrorContext(ctx, "Failed to find user by ID", "error", err, "userID", id)
+		logger.Error("Failed to find user", "error", err)
 		return nil, err
 	}
 
-	slog.InfoContext(ctx, "User found successfully", "userID", id)
+	logger.Info("User found successfully")
 	return user, nil
 }
 
 func (s *userService) GetUserByUsername(ctx context.Context, username string) (*model.User, error) {
-	return s.userRepo.FindUserByUsername(ctx, username)
+	logger := slog.With("method", "GetUserByUsername", "username", username)
+
+	if username == "" {
+		logger.Warn("Invalid input: empty username")
+		return nil, model.ErrInvalidInput
+	}
+
+	user, err := s.userRepo.FindUserByUsername(ctx, username)
+	if err != nil {
+		logger.Error("Failed to find user", "error", err)
+		return nil, err
+	}
+
+	logger.Info("User found successfully")
+	return user, nil
 }
 
-// CreateUser creates a new user
 func (s *userService) CreateUser(ctx context.Context, username, password, role string) (*model.User, error) {
-	slog.InfoContext(ctx, "Creating new user", "username", username, "role", role)
+	logger := slog.With("method", "CreateUser", "username", username, "role", role)
+
+	if username == "" || password == "" || role == "" {
+		logger.Warn("Invalid input parameters")
+		return nil, model.ErrInvalidInput
+	}
 
 	hashedPassword, err := HashPassword(password)
 	if err != nil {
-		slog.ErrorContext(ctx, "Failed to hash password", "error", err)
+		logger.Error("Failed to hash password", "error", err)
 		return nil, err
 	}
 
@@ -95,21 +114,21 @@ func (s *userService) CreateUser(ctx context.Context, username, password, role s
 	}
 
 	if err := s.userRepo.CreateUser(ctx, user); err != nil {
-		slog.ErrorContext(ctx, "Failed to create user", "error", err, "username", username)
-		return nil, err
+		logger.Error("Failed to create user", "error", err)
+		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
 
 	if err := s.createStash(ctx, user.ID); err != nil {
-		slog.ErrorContext(ctx, "Failed to create user", "error", err, "username", username)
-		return nil, err
+		logger.Error("Failed to create stash", "error", err)
+		return nil, model.ErrStashCreationFailed
 	}
 
-	slog.InfoContext(ctx, "User created successfully", "userID", user.ID, "username", username)
+	logger.Info("User created successfully", "userID", user.ID)
 	return user, nil
 }
 
 func (s *userService) createStash(ctx context.Context, userID uuid.UUID) error {
-	slog.InfoContext(ctx, "Creating new stash", "userID", userID)
+	logger := slog.With("method", "createStash", "userID", userID)
 
 	stash := &model.Stash{
 		ID:     uuid.New(),
@@ -117,52 +136,115 @@ func (s *userService) createStash(ctx context.Context, userID uuid.UUID) error {
 	}
 
 	if err := s.userRepo.CreateStash(ctx, stash); err != nil {
-		slog.ErrorContext(ctx, "Failed to create stash", "error", err, "userID", userID.String())
+		logger.Error("Failed to create stash", "error", err)
 		return err
 	}
 
-	slog.InfoContext(ctx, "Stash created successfully", "stashID", stash.ID, "userID", userID)
+	logger.Info("Stash created successfully", "stashID", stash.ID)
 	return nil
 }
 
 func (s *userService) UpdateUser(ctx context.Context, user *model.User) error {
+	logger := slog.With("method", "UpdateUser", "userID", user.ID)
+
+	if user.ID == uuid.Nil {
+		logger.Warn("Invalid input parameters")
+		return model.ErrInvalidInput
+	}
+
 	existingUser, err := s.userRepo.FindUserByID(ctx, user.ID.String())
 	if err != nil {
+		logger.Error("Failed to find user", "error", err)
 		return err
 	}
 
-	// Update only allowed fields
 	existingUser.Username = user.Username
 	existingUser.Role = user.Role
 
-	// If a new password is provided, hash it
 	if user.Password != "" {
 		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 		if err != nil {
-			return err
+			logger.Error("Failed to hash password", "error", err)
+			return fmt.Errorf("failed to hash password: %w", err)
 		}
 		existingUser.Password = string(hashedPassword)
 	}
 
 	if err := s.userRepo.UpdateUser(ctx, existingUser); err != nil {
-		return err
+		logger.Error("Failed to update user", "error", err)
+		return fmt.Errorf("failed to update user: %w", err)
 	}
 
+	logger.Info("User updated successfully")
 	return nil
 }
 
 func (s *userService) DeleteUser(ctx context.Context, id string) error {
-	return s.userRepo.DeleteUser(ctx, id)
+	logger := slog.With("method", "DeleteUser", "userID", id)
+
+	if id == "" {
+		logger.Warn("Invalid input: empty id")
+		return model.ErrInvalidInput
+	}
+
+	if err := s.userRepo.DeleteUser(ctx, id); err != nil {
+		logger.Error("Failed to delete user", "error", err)
+		return err
+	}
+
+	logger.Info("User deleted successfully")
+	return nil
 }
 
 func (s *userService) GetStorageUsage(ctx context.Context, userID string) (*model.StorageUsage, error) {
-	return s.userRepo.GetStorageUsage(ctx, userID)
+	logger := slog.With("method", "GetStorageUsage", "userID", userID)
+
+	if userID == "" {
+		logger.Warn("Invalid input: empty userID")
+		return nil, model.ErrInvalidInput
+	}
+
+	usage, err := s.userRepo.GetStorageUsage(ctx, userID)
+	if err != nil {
+		logger.Error("Failed to get storage usage", "error", err)
+		return nil, err
+	}
+
+	logger.Info("Storage usage retrieved successfully")
+	return usage, nil
 }
 
 func (s *userService) UpdateStorageUsage(ctx context.Context, storageUsage *model.StorageUsage) error {
-	return s.userRepo.UpdateStorageUsage(ctx, storageUsage)
+	logger := slog.With("method", "UpdateStorageUsage", "userID", storageUsage.UserID)
+
+	if storageUsage.UserID == uuid.Nil {
+		logger.Warn("Invalid input parameters")
+		return model.ErrInvalidInput
+	}
+
+	if err := s.userRepo.UpdateStorageUsage(ctx, storageUsage); err != nil {
+		logger.Error("Failed to update storage usage", "error", err)
+		return fmt.Errorf("failed to update storage usage: %w", err)
+	}
+
+	logger.Info("Storage usage updated successfully")
+	return nil
 }
 
 func (s *userService) GetStashByUserID(ctx context.Context, userID string) (*model.Stash, error) {
-	return s.userRepo.GetStashByUserID(ctx, userID)
+	logger := slog.With("method", "GetStashByUserID", "userID", userID)
+
+	if userID == "" {
+		logger.Warn("Invalid input: empty userID")
+		return nil, model.ErrInvalidInput
+	}
+
+	stash, err := s.userRepo.GetStashByUserID(ctx, userID)
+	if err != nil {
+		logger.Error("Failed to get stash", "error", err)
+		return nil, err
+	}
+
+	logger.Info("Stash retrieved successfully")
+	return stash, nil
 }

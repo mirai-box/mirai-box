@@ -16,10 +16,13 @@ func (e *ErrNotFound) Error() string {
 }
 
 var (
-	ErrWebPageNotFound    = errors.New("webpage not found")
-	ErrArtLinkNotFound    = errors.New("artlinl not found")
-	ErrArtProjectNotFound = errors.New("art project not found")
-	ErrCollectionNotFound = errors.New("collection not found")
-	ErrStashNotFound      = errors.New("stash not found")
-	ErrUserNotFound       = errors.New("user not found")
+	ErrWebPageNotFound     = errors.New("webpage not found")
+	ErrArtLinkNotFound     = errors.New("artlinl not found")
+	ErrArtProjectNotFound  = errors.New("art project not found")
+	ErrCollectionNotFound  = errors.New("collection not found")
+	ErrStashNotFound       = errors.New("stash not found")
+	ErrUserNotFound        = errors.New("user not found")
+	ErrInvalidCredentials  = errors.New("invalid credentials")
+	ErrInvalidInput        = errors.New("invalid input parameters")
+	ErrStashCreationFailed = errors.New("failed to create stash")
 )

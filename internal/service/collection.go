@@ -18,82 +18,80 @@ type CollectionService interface {
 	FindByUserID(ctx context.Context, userID string) ([]model.Collection, error)
 }
 
-// CollectionService implements the CollectionService
 type collectionService struct {
 	repo repo.CollectionRepository
 }
 
-// NewCollectionService creates a new instance of CollectionService
 func NewCollectionService(repo repo.CollectionRepository) CollectionService {
 	return &collectionService{repo: repo}
 }
 
-// CreateCollection creates a new collection
 func (s *collectionService) CreateCollection(ctx context.Context, userID, title string) (*model.Collection, error) {
+	logger := slog.With("method", "CreateCollection", "userID", userID, "title", title)
+
+	if userID == "" || title == "" {
+		logger.Warn("Invalid input parameters")
+		return nil, model.ErrInvalidInput
+	}
+
+	parsedUserID, err := uuid.Parse(userID)
+	if err != nil {
+		logger.Warn("Invalid userID format", "error", err)
+		return nil, model.ErrInvalidInput
+	}
+
 	collection := &model.Collection{
 		ID:        uuid.New(),
-		UserID:    uuid.MustParse(userID),
+		UserID:    parsedUserID,
 		Title:     title,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
 
-	slog.InfoContext(ctx, "Creating new collection",
-		"collectionID", collection.ID,
-		"userID", userID,
-		"title", title,
-	)
+	logger = logger.With("collectionID", collection.ID)
+	logger.Info("Creating new collection")
 
 	if err := s.repo.CreateCollection(ctx, collection); err != nil {
-		slog.ErrorContext(ctx, "Failed to create collection",
-			"error", err,
-			"collectionID", collection.ID,
-			"userID", userID,
-		)
+		logger.Error("Failed to create collection", "error", err)
 		return nil, err
 	}
 
-	slog.InfoContext(ctx, "Collection created successfully",
-		"collectionID", collection.ID,
-		"userID", userID,
-	)
-
+	logger.Info("Collection created successfully")
 	return collection, nil
 }
 
-// FindByID finds a collection by its ID
 func (s *collectionService) FindByID(ctx context.Context, id string) (*model.Collection, error) {
-	slog.InfoContext(ctx, "Finding collection by ID", "collectionID", id)
+	logger := slog.With("method", "FindByID", "collectionID", id)
+
+	if id == "" {
+		logger.Warn("Invalid input: empty id")
+		return nil, model.ErrInvalidInput
+	}
 
 	collection, err := s.repo.FindCollectionByID(ctx, id)
 	if err != nil {
-		slog.ErrorContext(ctx, "Failed to find collection by ID",
-			"error", err,
-			"collectionID", id,
-		)
+		logger.Error("Failed to find collection", "error", err)
 		return nil, err
 	}
 
-	slog.InfoContext(ctx, "Collection found successfully", "collectionID", id)
+	logger.Info("Collection found successfully")
 	return collection, nil
 }
 
-// FindByUserID finds all collections by a user ID
 func (s *collectionService) FindByUserID(ctx context.Context, userID string) ([]model.Collection, error) {
-	slog.InfoContext(ctx, "Finding collections by user ID", "userID", userID)
+	logger := slog.With("method", "FindByUserID", "userID", userID)
+
+	if userID == "" {
+		logger.Warn("Invalid input: empty userID")
+		return nil, model.ErrInvalidInput
+	}
 
 	collections, err := s.repo.FindByUserID(ctx, userID)
 	if err != nil {
-		slog.ErrorContext(ctx, "Failed to find collections by user ID",
-			"error", err,
-			"userID", userID,
-		)
+		logger.Error("Failed to find collections", "error", err)
 		return nil, err
 	}
 
-	slog.InfoContext(ctx, "Collections found successfully",
-		"userID", userID,
-		"count", len(collections),
-	)
+	logger.Info("Collections found successfully", "count", len(collections))
 	return collections, nil
 }
