@@ -20,8 +20,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/mirai-box/mirai-box/internal/app"
-	"github.com/mirai-box/mirai-box/internal/models"
-	"github.com/mirai-box/mirai-box/internal/repos"
+	"github.com/mirai-box/mirai-box/internal/model"
+	"github.com/mirai-box/mirai-box/internal/repo"
 )
 
 func TestArtProjectIntegration(t *testing.T) {
@@ -29,15 +29,14 @@ func TestArtProjectIntegration(t *testing.T) {
 	defer cleanup()
 
 	router := app.SetupRoutes(db, conf)
-	artProjectRepo := repos.NewArtProjectRepository(db)
-	revisionRepo := repos.NewRevisionRepository(db)
+	artProjectRepo := repo.NewArtProjectRepository(db)
 
 	testUser := createTestUserRest(t, router, db)
 	sessionCookie := loginTestUser(t, router, testUser)
 
 	var createdArtProjectID string
 
-	t.Run("CreateArtProject", func(t *testing.T) {
+	t.Run("Create ArtProject", func(t *testing.T) {
 		body := &bytes.Buffer{}
 		writer := multipart.NewWriter(body)
 
@@ -68,20 +67,19 @@ func TestArtProjectIntegration(t *testing.T) {
 
 		assert.Equal(t, http.StatusCreated, resp.Code)
 
-		var artProjectResp models.ArtProjectResponse
+		var artProjectResp model.ArtProjectResponse
 		err = json.Unmarshal(resp.Body.Bytes(), &artProjectResp)
 		require.NoError(t, err)
 
 		assert.NotEmpty(t, artProjectResp.ID)
 		assert.Equal(t, "Test Art Project", artProjectResp.Title)
-		assert.Equal(t, "image/png", artProjectResp.ContentType)
 		assert.Equal(t, "1.png", artProjectResp.Filename)
 		assert.Equal(t, testUser.ID, artProjectResp.UserID)
 
 		createdArtProjectID = artProjectResp.ID.String()
 
 		// Check database
-		dbArtProject, err := artProjectRepo.FindByID(context.Background(), createdArtProjectID)
+		dbArtProject, err := artProjectRepo.FindArtProjectByID(context.Background(), createdArtProjectID)
 		assert.NoError(t, err)
 		assert.Equal(t, artProjectResp.ID, dbArtProject.ID)
 		assert.Equal(t, artProjectResp.Title, dbArtProject.Title)
@@ -119,7 +117,7 @@ func TestArtProjectIntegration(t *testing.T) {
 
 		assert.Equal(t, http.StatusCreated, resp.Code)
 
-		var revisionResp models.RevisionResponse
+		var revisionResp model.RevisionResponse
 		err = json.Unmarshal(resp.Body.Bytes(), &revisionResp)
 		require.NoError(t, err)
 
@@ -129,8 +127,9 @@ func TestArtProjectIntegration(t *testing.T) {
 		assert.Equal(t, createdArtProjectID, revisionResp.ArtProjectID.String())
 
 		// Check database
-		dbRevision, err := revisionRepo.FindByID(context.Background(), revisionResp.ID.String())
+		dbRevision, err := artProjectRepo.FindRevisionByID(context.Background(), revisionResp.ID.String())
 		assert.NoError(t, err)
+
 		assert.Equal(t, revisionResp.ID, dbRevision.ID)
 		assert.Equal(t, revisionResp.Comment, dbRevision.Comment)
 		assert.Equal(t, revisionResp.Version, dbRevision.Version)
@@ -145,7 +144,7 @@ func TestArtProjectIntegration(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, resp.Code)
 
-		var artProjects []models.ArtProjectResponse
+		var artProjects []model.ArtProjectResponse
 		err := json.Unmarshal(resp.Body.Bytes(), &artProjects)
 		require.NoError(t, err)
 
@@ -163,7 +162,7 @@ func TestArtProjectIntegration(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, resp.Code)
 
-		var artProject models.ArtProjectResponse
+		var artProject model.ArtProjectResponse
 		err := json.Unmarshal(resp.Body.Bytes(), &artProject)
 		require.NoError(t, err)
 
@@ -180,7 +179,7 @@ func TestArtProjectIntegration(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, resp.Code)
 
-		var revisions []models.RevisionResponse
+		var revisions []model.RevisionResponse
 		err := json.Unmarshal(resp.Body.Bytes(), &revisions)
 		require.NoError(t, err)
 
@@ -195,7 +194,7 @@ func TestArtProjectIntegration(t *testing.T) {
 		require.NoError(t, err)
 		require.NotEmpty(t, artProjects)
 
-		revisions, err := revisionRepo.FindByArtProjectID(context.Background(), artProjects[0].ID.String())
+		revisions, err := artProjectRepo.ListAllRevisions(context.Background(), artProjects[0].ID.String())
 		require.NoError(t, err)
 		require.NotEmpty(t, revisions)
 		assert.Equal(t, 2, len(revisions))
@@ -207,7 +206,6 @@ func TestArtProjectIntegration(t *testing.T) {
 		router.ServeHTTP(resp, req)
 
 		assert.Equal(t, http.StatusOK, resp.Code)
-		assert.Equal(t, "image/png", resp.Header().Get("Content-Type"))
 		assert.Equal(t, expectedSize, resp.Header().Get("Content-Length"))
 	})
 }

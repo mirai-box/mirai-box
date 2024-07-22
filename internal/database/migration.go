@@ -8,7 +8,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/mirai-box/mirai-box/internal/config"
-	"github.com/mirai-box/mirai-box/internal/models"
+	"github.com/mirai-box/mirai-box/internal/model"
 )
 
 // CreateDatabaseAndUser creates the database and user if they don't exist
@@ -60,17 +60,17 @@ func RunMigrations(db *gorm.DB) error {
 	}
 
 	return db.AutoMigrate(
-		&models.User{},
-		&models.Stash{},
-		&models.ArtProject{},
-		&models.Category{},
-		&models.Tag{},
-		&models.Revision{},
-		&models.Collection{},
-		&models.CollectionArtProject{},
-		&models.Sale{},
-		&models.StorageUsage{},
-		&models.WebPage{},
-		&models.ArtLink{},
+		&model.User{},
+		&model.Stash{},
+		&model.ArtProject{},
+		&model.Category{},
+		&model.Tag{},
+		&model.Revision{},
+		&model.Collection{},
+		&model.CollectionArtProject{},
+		&model.Sale{},
+		&model.StorageUsage{},
+		&model.WebPage{},
+		&model.ArtLink{},
 	)
 }

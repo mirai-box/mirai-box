@@ -15,8 +15,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/mirai-box/mirai-box/internal/app"
-	"github.com/mirai-box/mirai-box/internal/models"
-	"github.com/mirai-box/mirai-box/internal/repos"
+	"github.com/mirai-box/mirai-box/internal/model"
+	"github.com/mirai-box/mirai-box/internal/repo"
 )
 
 func TestUserIntegration(t *testing.T) {
@@ -24,8 +24,7 @@ func TestUserIntegration(t *testing.T) {
 	defer cleanup()
 
 	router := app.SetupRoutes(db, conf)
-	userRepo := repos.NewUserRepository(db)
-	stashRepo := repos.NewStashRepository(db)
+	userRepo := repo.NewUserRepository(db)
 
 	t.Run("CreateUser", func(t *testing.T) {
 		reqBody := map[string]interface{}{
@@ -44,7 +43,7 @@ func TestUserIntegration(t *testing.T) {
 
 		assert.Equal(t, http.StatusCreated, resp.Code)
 
-		var userResp models.UserResponse
+		var userResp model.UserResponse
 		err = json.Unmarshal(resp.Body.Bytes(), &userResp)
 		require.NoError(t, err)
 
@@ -53,14 +52,14 @@ func TestUserIntegration(t *testing.T) {
 		assert.Equal(t, "user", userResp.Role)
 
 		// Check database using user repo
-		dbUser, err := userRepo.FindByUsername(context.Background(), "testuser")
+		dbUser, err := userRepo.FindUserByUsername(context.Background(), "testuser")
 		assert.NoError(t, err)
 		assert.Equal(t, userResp.ID, dbUser.ID)
 		assert.Equal(t, userResp.Username, dbUser.Username)
 		assert.Equal(t, userResp.Role, dbUser.Role)
 
 		// Check stash creation
-		stash, err := stashRepo.FindByUserID(context.Background(), dbUser.ID.String())
+		stash, err := userRepo.GetStashByUserID(context.Background(), dbUser.ID.String())
 		assert.NoError(t, err)
 		assert.Equal(t, dbUser.ID.String(), stash.UserID.String())
 	})
@@ -81,7 +80,7 @@ func TestUserIntegration(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, resp.Code)
 
-		var userResp models.UserResponse
+		var userResp model.UserResponse
 		err = json.Unmarshal(resp.Body.Bytes(), &userResp)
 		require.NoError(t, err)
 
@@ -92,7 +91,7 @@ func TestUserIntegration(t *testing.T) {
 		cookies := resp.Result().Cookies()
 		var sessionCookie *http.Cookie
 		for _, cookie := range cookies {
-			if cookie.Name == models.SessionCookieName {
+			if cookie.Name == model.SessionCookieName {
 				sessionCookie = cookie
 				break
 			}
@@ -117,7 +116,7 @@ func TestUserIntegration(t *testing.T) {
 		cookies := loginResp.Result().Cookies()
 		var sessionCookie *http.Cookie
 		for _, cookie := range cookies {
-			if cookie.Name == models.SessionCookieName {
+			if cookie.Name == model.SessionCookieName {
 				sessionCookie = cookie
 				break
 			}

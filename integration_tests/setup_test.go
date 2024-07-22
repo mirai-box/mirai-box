@@ -24,8 +24,8 @@ import (
 
 	"github.com/mirai-box/mirai-box/internal/config"
 	"github.com/mirai-box/mirai-box/internal/database"
-	"github.com/mirai-box/mirai-box/internal/models"
-	"github.com/mirai-box/mirai-box/internal/repos"
+	"github.com/mirai-box/mirai-box/internal/model"
+	"github.com/mirai-box/mirai-box/internal/repo"
 	"github.com/mirai-box/mirai-box/internal/service"
 )
 
@@ -96,7 +96,7 @@ func setupTestEnvironment(t *testing.T) (*gorm.DB, *config.Config, func()) {
 	return db, conf, cleanup
 }
 
-func loginTestUser(t *testing.T, router http.Handler, user *models.User) *http.Cookie {
+func loginTestUser(t *testing.T, router http.Handler, user *model.User) *http.Cookie {
 	t.Helper()
 	loginReqBody := map[string]interface{}{
 		"username":     user.Username,
@@ -113,7 +113,7 @@ func loginTestUser(t *testing.T, router http.Handler, user *models.User) *http.C
 
 	require.Equal(t, http.StatusOK, loginResp.Code, "login status is OK")
 
-	var userResp models.UserResponse
+	var userResp model.UserResponse
 	err = json.Unmarshal(loginResp.Body.Bytes(), &userResp)
 	require.NoError(t, err)
 
@@ -122,7 +122,7 @@ func loginTestUser(t *testing.T, router http.Handler, user *models.User) *http.C
 
 	var sessionCookie *http.Cookie
 	for _, cookie := range loginResp.Result().Cookies() {
-		if cookie.Name == models.SessionCookieName {
+		if cookie.Name == model.SessionCookieName {
 			sessionCookie = cookie
 			break
 		}
@@ -133,11 +133,11 @@ func loginTestUser(t *testing.T, router http.Handler, user *models.User) *http.C
 	return sessionCookie
 }
 
-func createTestUser(t *testing.T, db *gorm.DB) *models.User {
+func createTestUser(t *testing.T, db *gorm.DB) *model.User {
 	t.Helper()
 
 	username := fmt.Sprintf("test_%d", rand.Intn(1000))
-	userRepo := repos.NewUserRepository(db)
+	userRepo := repo.NewUserRepository(db)
 	userService := service.NewUserService(userRepo)
 
 	user, err := userService.CreateUser(
@@ -151,12 +151,11 @@ func createTestUser(t *testing.T, db *gorm.DB) *models.User {
 	return user
 }
 
-func createTestUserRest(t *testing.T, router http.Handler, db *gorm.DB) *models.User {
+func createTestUserRest(t *testing.T, router http.Handler, db *gorm.DB) *model.User {
 	t.Helper()
 
 	username := fmt.Sprintf("test_%d", rand.Intn(1000))
-	userRepo := repos.NewUserRepository(db)
-	stashRepo := repos.NewStashRepository(db)
+	userRepo := repo.NewUserRepository(db)
 
 	reqBody := map[string]interface{}{
 		"username": username,
@@ -174,7 +173,7 @@ func createTestUserRest(t *testing.T, router http.Handler, db *gorm.DB) *models.
 
 	assert.Equal(t, http.StatusCreated, resp.Code)
 
-	var userResp models.UserResponse
+	var userResp model.UserResponse
 	err = json.Unmarshal(resp.Body.Bytes(), &userResp)
 	require.NoError(t, err)
 
@@ -183,14 +182,14 @@ func createTestUserRest(t *testing.T, router http.Handler, db *gorm.DB) *models.
 	assert.Equal(t, "user", userResp.Role)
 
 	// Check database using user repo
-	dbUser, err := userRepo.FindByUsername(context.Background(), username)
+	dbUser, err := userRepo.FindUserByUsername(context.Background(), username)
 	assert.NoError(t, err)
 	assert.Equal(t, userResp.ID, dbUser.ID)
 	assert.Equal(t, userResp.Username, dbUser.Username)
 	assert.Equal(t, userResp.Role, dbUser.Role)
 
 	// Check stash creation
-	stash, err := stashRepo.FindByUserID(context.Background(), dbUser.ID.String())
+	stash, err := userRepo.GetStashByUserID(context.Background(), dbUser.ID.String())
 	assert.NoError(t, err)
 	assert.Equal(t, dbUser.ID.String(), stash.UserID.String())
 

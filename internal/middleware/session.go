@@ -5,9 +5,10 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/sessions"
 
-	"github.com/mirai-box/mirai-box/internal/models"
+	"github.com/mirai-box/mirai-box/internal/model"
 	"github.com/mirai-box/mirai-box/internal/service"
 )
 
@@ -21,10 +22,10 @@ const (
 
 type Middleware struct {
 	store       sessions.Store
-	userService service.UserServiceInterface
+	userService service.UserService
 }
 
-func NewMiddleware(store sessions.Store, userService service.UserServiceInterface) *Middleware {
+func NewMiddleware(store sessions.Store, userService service.UserService) *Middleware {
 	return &Middleware{
 		store:       store,
 		userService: userService,
@@ -33,7 +34,7 @@ func NewMiddleware(store sessions.Store, userService service.UserServiceInterfac
 
 func (m *Middleware) SessionMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		session, err := m.store.Get(r, models.SessionCookieName)
+		session, err := m.store.Get(r, model.SessionCookieName)
 		if err != nil {
 			slog.Error("SessionMiddleware: failed to get session", "error", err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -41,7 +42,7 @@ func (m *Middleware) SessionMiddleware(next http.Handler) http.Handler {
 		}
 
 		ctx := context.WithValue(r.Context(), SessionKey, session)
-		if userID, ok := session.Values[models.SessionUserIDKey].(string); ok {
+		if userID, ok := session.Values[model.SessionUserIDKey].(string); ok {
 			ctx = context.WithValue(ctx, UserIDKey, userID)
 		}
 
@@ -49,17 +50,40 @@ func (m *Middleware) SessionMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+// MockAuthMiddleware simulates authentication for testing purposes
+func (m *Middleware) MockAuthMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Check for the presence of an Authorization header
+		userID := r.Header.Get("X-User-ID")
+		if userID == "" {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		// Create a mock user
+		user := &model.User{
+			ID:       uuid.MustParse(userID),
+			Username: "testuser",
+			Role:     "user",
+		}
+
+		// Add the user to the request context
+		ctx := context.WithValue(r.Context(), UserKey, user)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
 func (m *Middleware) AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		session, _ := m.store.Get(r, models.SessionCookieName)
-		userID, ok := session.Values[models.SessionUserIDKey]
+		session, _ := m.store.Get(r, model.SessionCookieName)
+		userID, ok := session.Values[model.SessionUserIDKey]
 		if !ok {
 			slog.Error("AuthMiddleware: no user ID in session")
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
 
-		user, err := m.userService.FindByID(r.Context(), userID.(string))
+		user, err := m.userService.GetUser(r.Context(), userID.(string))
 		if err != nil {
 			slog.Error("AuthMiddleware: failed to find user", "error", err)
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -74,7 +98,7 @@ func (m *Middleware) AuthMiddleware(next http.Handler) http.Handler {
 func (m *Middleware) RequireRole(roles ...string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			user, ok := r.Context().Value(UserKey).(*models.User)
+			user, ok := r.Context().Value(UserKey).(*model.User)
 			if !ok {
 				slog.Error("RequireRole: user not found in context")
 				http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -98,8 +122,8 @@ func (m *Middleware) RequireRole(roles ...string) func(http.Handler) http.Handle
 	}
 }
 
-func GetUserFromContext(ctx context.Context) (*models.User, bool) {
-	user, ok := ctx.Value(UserKey).(*models.User)
+func GetUserFromContext(ctx context.Context) (*model.User, bool) {
+	user, ok := ctx.Value(UserKey).(*model.User)
 	return user, ok
 }
 
