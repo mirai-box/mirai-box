@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 
@@ -71,8 +72,8 @@ func (h *CollectionHandler) GetCollection(w http.ResponseWriter, r *http.Request
 	collection, err := h.collectionService.FindByID(ctx, collectionID)
 	if err != nil {
 		logger.Error("Failed to get collection", "error", err, "collectionID", collectionID)
-		if err == model.ErrInvalidInput {
-			SendErrorResponse(w, http.StatusBadRequest, "Invalid input")
+		if err == model.ErrCollectionNotFound {
+			SendErrorResponse(w, http.StatusNotFound, "Invalid input")
 		} else {
 			SendErrorResponse(w, http.StatusInternalServerError, "Failed to get collection")
 		}
@@ -177,9 +178,9 @@ func (h *CollectionHandler) DeleteCollection(w http.ResponseWriter, r *http.Requ
 
 func (h *CollectionHandler) AddRevisionToCollection(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	logger := slog.With("handler", "AddRevisionToCollection")
-
 	collectionID := chi.URLParam(r, "id")
+	logger := slog.With("handler", "AddRevisionToCollection", "collectionID", collectionID)
+
 	var req struct {
 		RevisionID string `json:"revisionID"`
 	}
@@ -190,7 +191,11 @@ func (h *CollectionHandler) AddRevisionToCollection(w http.ResponseWriter, r *ht
 	}
 
 	if err := h.collectionService.AddRevisionToCollection(ctx, collectionID, req.RevisionID); err != nil {
-		logger.Error("Failed to add art project to collection", "error", err, "collectionID", collectionID, "revisionID", req.RevisionID)
+		logger.Error("Failed to add art project to collection", "error", err, "revisionID", req.RevisionID)
+		if errors.Is(err, model.ErrCollectionNotFound) {
+			SendErrorResponse(w, http.StatusNotFound, "Collection not found")
+			return
+		}
 		SendErrorResponse(w, http.StatusInternalServerError, "Failed to add art project to collection")
 		return
 	}

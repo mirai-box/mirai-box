@@ -237,7 +237,7 @@ func (h *ArtProjectHandler) MyArtProjectByID(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	artID := chi.URLParam(r, "id")
+	artID := chi.URLParam(r, "artID")
 	logger = logger.With("artID", artID, "userID", user.ID)
 	logger.Info("Retrieving art project")
 
@@ -374,13 +374,6 @@ func convertToArtProjectResponse(artProject *model.ArtProject) model.ArtProjectR
 		Tags:                make([]model.TagResponse, len(artProject.Tags)),
 		StashID:             artProject.StashID,
 		UserID:              artProject.UserID,
-	}
-
-	for i, tag := range artProject.Tags {
-		response.Tags[i] = model.TagResponse{
-			ID:   tag.ID,
-			Name: tag.Name,
-		}
 	}
 
 	return response
