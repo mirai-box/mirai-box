@@ -104,8 +104,16 @@ sub test_picture_upload_and_revisions {
 
     is($upload_response->code, 201, "Art project with first revision successfully created");
     my $upload_data = decode_json($upload_response->content);
-    ok(exists $upload_data->{id}, "Picture ID received");
+    ok(exists $upload_data->{id}, "Art-project ID received");
     my $artproject_id = $upload_data->{id};
+
+    my $art_project_link1 = "$BASE_URL/self/artprojects/$artproject_id";
+    my $art_project_link_resp = $ua->request(
+        GET $art_project_link1,
+        'Cookie' => $session_cookie,
+    );
+    is($art_project_link_resp->code, 200, "Get art-project datae: $art_project_link1");
+    # debug_json($art_project_link_resp);
 
     # Add second revision to the first art project
     my $revision_response = $ua->request(
