@@ -38,11 +38,13 @@ func SetupRoutes(db *gorm.DB, conf *config.Config) http.Handler {
 	ar := repo.NewArtProjectRepository(db)
 	fsr := repo.NewFileStorageRepository(db, conf.StorageRoot)
 	wpr := repo.NewWebPageRepository(db)
+	cr := repo.NewCollectionRepository(db)
 
 	// Initialize services
 	userService := service.NewUserService(ur)
 	artProjectService := service.NewArtProjectService(ur, ar, fsr, conf.SecretKey)
 	webPageService := service.NewWebPageService(wpr)
+	cs := service.NewCollectionService(cr, ar, conf.SecretKey)
 
 	cookieStore := sessions.NewCookieStore([]byte(conf.SessionKey))
 	m := am.NewMiddleware(cookieStore, userService)
@@ -51,10 +53,12 @@ func SetupRoutes(db *gorm.DB, conf *config.Config) http.Handler {
 	userHandler := handler.NewUserHandler(userService, cookieStore)
 	artProjectHandler := handler.NewArtProjectHandler(artProjectService)
 	webPageHandler := handler.NewWebPageHandler(webPageService)
+	ch := handler.NewCollectionHandler(cs)
 
 	r.Post("/login", userHandler.Login)
 	r.Get("/login/check", userHandler.LoginCheck)
 	r.Get("/art/{artID}", artProjectHandler.GetArtByID)
+	r.Get("/collection/{id}", ch.ListPublicRevisions)
 
 	r.Route("/self", func(r chi.Router) {
 		r.Use(m.AuthMiddleware)
@@ -68,15 +72,29 @@ func SetupRoutes(db *gorm.DB, conf *config.Config) http.Handler {
 		r.With(am.ValidateUUID("id")).Delete("/webpages/{id}", webPageHandler.DeleteWebPage)
 
 		r.Get("/artprojects", artProjectHandler.MyArtProjects)
-		r.With(am.ValidateUUID("id")).Get("/artprojects/{id}", artProjectHandler.MyArtProjectByID)
+		r.With(am.ValidateUUID("artID")).Get("/artprojects/{artID}", artProjectHandler.MyArtProjectByID)
 
-		r.With(am.ValidateUUID("id")).
-			Get("/artprojects/{id}/revisions", artProjectHandler.ListRevisions)
-		r.With(am.ValidateUUID("id")).
-			Post("/artprojects/{id}/revisions", artProjectHandler.AddRevision)
+		r.With(am.ValidateUUID("artID")).
+			Get("/artprojects/{artID}/revisions", artProjectHandler.ListRevisions)
+		r.With(am.ValidateUUID("artID")).
+			Post("/artprojects/{artID}/revisions", artProjectHandler.AddRevision)
 		r.Post("/artprojects", artProjectHandler.CreateArtProject)
 		r.With(am.ValidateUUID("artID")).With(am.ValidateUUID("revisionID")).
 			Get("/artprojects/{artID}/revisions/{revisionID}", artProjectHandler.RevisionDownload)
+
+		r.Route("/collections", func(r chi.Router) {
+			r.Post("/", ch.CreateCollection)
+			r.Get("/", ch.GetUserCollections)
+			r.With(am.ValidateUUID("id")).Get("/{id}", ch.GetCollection)
+			r.With(am.ValidateUUID("id")).Put("/{id}", ch.UpdateCollection)
+			r.With(am.ValidateUUID("id")).Delete("/{id}", ch.DeleteCollection)
+			r.With(am.ValidateUUID("id")).
+				Post("/{id}/revisions", ch.AddRevisionToCollection)
+			r.With(am.ValidateUUID("id")).
+				Get("/{id}/revisions", ch.ListRevisions)
+			r.With(am.ValidateUUID("id")).With(am.ValidateUUID("revisionID")).
+				Delete("/{id}/revisions/{revisionID}", ch.RemoveRevisionFromCollection)
+		})
 	})
 
 	// Routes

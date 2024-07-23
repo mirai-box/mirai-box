@@ -8,7 +8,7 @@ import (
 
 type Revision struct {
 	ID           uuid.UUID  `gorm:"type:uuid;default:uuid_generate_v4();primary_key" json:"id"`
-	ArtID        string     `gorm:"type:varchar(255);not null" json:"art_id"`
+	ArtID        string     `gorm:"type:varchar(255);not null;uniqueIndex" json:"art_id"`
 	Version      int        `gorm:"type:int" json:"version"`
 	FilePath     string     `gorm:"type:varchar(255);not null" json:"-"`
 	CreatedAt    time.Time  `gorm:"type:timestamp;default:now()" json:"created_at"`

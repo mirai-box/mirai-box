@@ -14,6 +14,24 @@ type CollectionService struct {
 	mock.Mock
 }
 
+// AddRevisionToCollection provides a mock function with given fields: ctx, collectionID, revisionID
+func (_m *CollectionService) AddRevisionToCollection(ctx context.Context, collectionID string, revisionID string) error {
+	ret := _m.Called(ctx, collectionID, revisionID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AddRevisionToCollection")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) error); ok {
+		r0 = rf(ctx, collectionID, revisionID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // CreateCollection provides a mock function with given fields: ctx, userID, title
 func (_m *CollectionService) CreateCollection(ctx context.Context, userID string, title string) (*model.Collection, error) {
 	ret := _m.Called(ctx, userID, title)
@@ -42,6 +60,24 @@ func (_m *CollectionService) CreateCollection(ctx context.Context, userID string
 	}
 
 	return r0, r1
+}
+
+// DeleteCollection provides a mock function with given fields: ctx, id
+func (_m *CollectionService) DeleteCollection(ctx context.Context, id string) error {
+	ret := _m.Called(ctx, id)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeleteCollection")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) error); ok {
+		r0 = rf(ctx, id)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
 }
 
 // FindByID provides a mock function with given fields: ctx, id
@@ -102,6 +138,102 @@ func (_m *CollectionService) FindByUserID(ctx context.Context, userID string) ([
 	}
 
 	return r0, r1
+}
+
+// GetRevisionsByCollectionID provides a mock function with given fields: ctx, collectionID
+func (_m *CollectionService) GetRevisionsByCollectionID(ctx context.Context, collectionID string) ([]model.Revision, error) {
+	ret := _m.Called(ctx, collectionID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetRevisionsByCollectionID")
+	}
+
+	var r0 []model.Revision
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) ([]model.Revision, error)); ok {
+		return rf(ctx, collectionID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) []model.Revision); ok {
+		r0 = rf(ctx, collectionID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]model.Revision)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, collectionID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetRevisionsByPublicCollectionID provides a mock function with given fields: ctx, collectionPublicID
+func (_m *CollectionService) GetRevisionsByPublicCollectionID(ctx context.Context, collectionPublicID string) ([]model.Revision, error) {
+	ret := _m.Called(ctx, collectionPublicID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetRevisionsByPublicCollectionID")
+	}
+
+	var r0 []model.Revision
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) ([]model.Revision, error)); ok {
+		return rf(ctx, collectionPublicID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) []model.Revision); ok {
+		r0 = rf(ctx, collectionPublicID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]model.Revision)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, collectionPublicID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// RemoveRevisionFromCollection provides a mock function with given fields: ctx, collectionID, revisionID
+func (_m *CollectionService) RemoveRevisionFromCollection(ctx context.Context, collectionID string, revisionID string) error {
+	ret := _m.Called(ctx, collectionID, revisionID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RemoveRevisionFromCollection")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) error); ok {
+		r0 = rf(ctx, collectionID, revisionID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// UpdateCollection provides a mock function with given fields: ctx, collection
+func (_m *CollectionService) UpdateCollection(ctx context.Context, collection *model.Collection) error {
+	ret := _m.Called(ctx, collection)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateCollection")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, *model.Collection) error); ok {
+		r0 = rf(ctx, collection)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
 }
 
 // NewCollectionService creates a new instance of CollectionService. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.

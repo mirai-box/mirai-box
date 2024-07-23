@@ -130,7 +130,7 @@ func (s *artProjectService) FindByUserID(ctx context.Context, userID string) ([]
 }
 
 func (s *artProjectService) AddRevision(ctx context.Context, revision *model.Revision, fileData io.Reader) error {
-	logger := slog.With("method", "AddRevision", "userID", revision.UserID, "revisionID", revision.ID, "artProjectID", revision.ArtProjectID)
+	logger := slog.With("service", "AddRevision", "userID", revision.UserID, "revisionID", revision.ID, "artProjectID", revision.ArtProjectID)
 
 	if revision.UserID == uuid.Nil || revision.ArtProjectID == uuid.Nil || fileData == nil {
 		logger.Warn("Invalid input parameters")
@@ -145,7 +145,7 @@ func (s *artProjectService) AddRevision(ctx context.Context, revision *model.Rev
 		return fmt.Errorf("failed to store revision file: %w", err)
 	}
 
-	artID, err := GenerateArtID(revision.ID, revision.UserID, s.secretKey)
+	artID, err := GeneratePublicID(revision.ID, revision.UserID, s.secretKey)
 	if err != nil {
 		logger.Error("Failed to generate artID", "error", err)
 		return fmt.Errorf("failed to generate artID: %w", err)
@@ -161,7 +161,7 @@ func (s *artProjectService) AddRevision(ctx context.Context, revision *model.Rev
 		return fmt.Errorf("failed to save revision: %w", err)
 	}
 
-	if err := s.artRepo.UpdateLatestRevision(ctx, revision.ArtProjectID.String(), revision.ID); err != nil {
+	if err := s.artRepo.UpdateLatestRevision(ctx, revision.ArtProjectID, revision.ID); err != nil {
 		logger.Error("Failed to update latest revision", "error", err)
 		return fmt.Errorf("failed to update latest revision: %w", err)
 	}
@@ -185,7 +185,7 @@ func (s *artProjectService) AddRevision(ctx context.Context, revision *model.Rev
 }
 
 func (s *artProjectService) GetRevisionByArtID(ctx context.Context, artID string) (*model.Revision, error) {
-	revisionID, userID, err := DecodeArtID(artID, s.secretKey)
+	revisionID, userID, err := DecodePublicID(artID, s.secretKey)
 	if err != nil {
 		slog.ErrorContext(ctx, "Failed to decode artID", "error", err, "artID", artID)
 		return nil, err

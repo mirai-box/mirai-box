@@ -39,12 +39,12 @@ func setupArtProjectTestServer(t *testing.T) (*httptest.Server, *mocks.ArtProjec
 		r.Use(m.MockAuthMiddleware)
 
 		r.Get("/artprojects", artProjectHandler.MyArtProjects)
-		r.With(middleware.ValidateUUID("id")).Get("/artprojects/{id}", artProjectHandler.MyArtProjectByID)
+		r.With(middleware.ValidateUUID("artID")).Get("/artprojects/{artID}", artProjectHandler.MyArtProjectByID)
 
-		r.With(middleware.ValidateUUID("id")).
-			Get("/artprojects/{id}/revisions", artProjectHandler.ListRevisions)
-		r.With(middleware.ValidateUUID("id")).
-			Post("/artprojects/{id}/revisions", artProjectHandler.AddRevision)
+		r.With(middleware.ValidateUUID("artID")).
+			Get("/artprojects/{artID}/revisions", artProjectHandler.ListRevisions)
+		r.With(middleware.ValidateUUID("artID")).
+			Post("/artprojects/{artID}/revisions", artProjectHandler.AddRevision)
 		r.Post("/artprojects", artProjectHandler.CreateArtProject)
 		r.With(middleware.ValidateUUID("artID")).
 			With(middleware.ValidateUUID("revisionID")).
@@ -627,7 +627,8 @@ func TestArtProjectHandler_MyArtProjectByID(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
 		artProject := &model.ArtProject{ID: artProjectID, UserID: userID, Title: "My Project"}
 
-		mockService.On("FindByID", mock.Anything, artProjectID.String()).Return(artProject, nil).Once()
+		mockService.On("FindByID", mock.Anything, artProjectID.String()).
+			Return(artProject, nil).Once()
 
 		req, _ := http.NewRequest("GET", server.URL+"/self/artprojects/"+artProjectID.String(), nil)
 		req.Header.Set("X-User-ID", userID.String())

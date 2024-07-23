@@ -7,6 +7,7 @@ import (
 
 	"gorm.io/gorm"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/mirai-box/mirai-box/internal/model"
 )
 
@@ -38,6 +39,13 @@ func (r *userRepo) CreateUser(ctx context.Context, user *model.User) error {
 	logger := slog.With("method", "CreateUser", "userID", user.ID)
 
 	if err := r.db.Create(user).Error; err != nil {
+		// Check if the error is a unique constraint violation
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" && pgErr.ConstraintName == "uni_users_username" {
+			logger.Warn("Attempted to create user with existing username", "username", user.Username)
+			return model.ErrDuplicateUsername
+		}
+
 		logger.Error("Failed to create user", "error", err)
 		return err
 	}

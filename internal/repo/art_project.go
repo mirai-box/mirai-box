@@ -19,7 +19,7 @@ type ArtProjectRepository interface {
 	DeleteArtProject(ctx context.Context, id string) error
 	SaveArtProjectAndRevision(ctx context.Context, artProject *model.ArtProject, revision *model.Revision) error
 	SaveRevision(ctx context.Context, revision *model.Revision) error
-	UpdateLatestRevision(ctx context.Context, artProjectID string, revisionID uuid.UUID) error
+	UpdateLatestRevision(ctx context.Context, artProjectID, revisionID uuid.UUID) error
 	ListLatestRevisions(ctx context.Context, userID string) ([]model.Revision, error)
 	ListAllArtProjects(ctx context.Context, userID string) ([]model.ArtProject, error)
 	ListAllRevisions(ctx context.Context, artProjectID string) ([]model.Revision, error)
@@ -149,10 +149,14 @@ func (r *artProjectRepo) SaveRevision(ctx context.Context, revision *model.Revis
 }
 
 // UpdateLatestRevision updates the latest revision ID for an art project.
-func (r *artProjectRepo) UpdateLatestRevision(ctx context.Context, artProjectID string, revisionID uuid.UUID) error {
-	logger := slog.With("method", "UpdateLatestRevision", "artProjectID", artProjectID, "revisionID", revisionID)
+func (r *artProjectRepo) UpdateLatestRevision(ctx context.Context, artProjectID, revisionID uuid.UUID) error {
+	logger := slog.With("repo", "UpdateLatestRevision",
+		"artProjectID", artProjectID,
+		"revisionID", revisionID)
 
-	if err := r.db.Model(&model.ArtProject{}).Where("id = ?", artProjectID).Update("latest_revision_id", revisionID).Error; err != nil {
+	if err := r.db.Model(&model.ArtProject{}).
+		Where("id = ?", artProjectID).
+		Update("latest_revision_id", revisionID).Error; err != nil {
 		logger.Error("Failed to update latest revision", "error", err)
 		return err
 	}
@@ -187,7 +191,9 @@ func (r *artProjectRepo) ListAllArtProjects(ctx context.Context, userID string) 
 	logger := slog.With("method", "ListAllArtProjects", "userID", userID)
 
 	var artProjects []model.ArtProject
-	if err := r.db.Where("user_id = ?", userID).Find(&artProjects).Error; err != nil {
+	if err := r.db.Where("user_id = ?", userID).
+		Order("created_at ASC").
+		Find(&artProjects).Error; err != nil {
 		logger.Error("Failed to list all art projects", "error", err)
 		return nil, err
 	}
@@ -225,7 +231,10 @@ func (r *artProjectRepo) GetMaxRevisionVersion(ctx context.Context, artProjectID
 	logger := slog.With("method", "GetMaxRevisionVersion", "artProjectID", artProjectID)
 
 	var maxVersion int
-	if err := r.db.Model(&model.Revision{}).Where("art_project_id = ?", artProjectID).Select("COALESCE(MAX(version), 0)").Scan(&maxVersion).Error; err != nil {
+	if err := r.db.Model(&model.Revision{}).
+		Where("art_project_id = ?", artProjectID).
+		Select("COALESCE(MAX(version), 0)").
+		Scan(&maxVersion).Error; err != nil {
 		logger.Error("Failed to get max revision version", "error", err)
 		return 0, err
 	}
@@ -239,7 +248,9 @@ func (r *artProjectRepo) FindByStashID(ctx context.Context, stashID string) ([]m
 	logger := slog.With("method", "FindByStashID", "stashID", stashID)
 
 	var artProjects []model.ArtProject
-	if err := r.db.Where("stash_id = ?", stashID).Find(&artProjects).Error; err != nil {
+	if err := r.db.Where("stash_id = ?", stashID).
+		Order("created_at ASC").
+		Find(&artProjects).Error; err != nil {
 		logger.Error("Failed to find art projects by stash ID", "error", err)
 		return nil, err
 	}
@@ -258,7 +269,9 @@ func (r *artProjectRepo) FindByUserID(ctx context.Context, userID string) ([]mod
 	logger := slog.With("method", "FindByUserID", "userID", userID)
 
 	var artProjects []model.ArtProject
-	if err := r.db.Where("user_id = ?", userID).Find(&artProjects).Error; err != nil {
+	if err := r.db.Where("user_id = ?", userID).
+		Order("created_at ASC").
+		Find(&artProjects).Error; err != nil {
 		logger.Error("Failed to find art projects by user ID", "error", err)
 		return nil, err
 	}

@@ -35,24 +35,32 @@ type PaginatedResponse struct {
 
 // ArtProjectResponse represents the response for an art project
 type ArtProjectResponse struct {
-	ID                  uuid.UUID  `json:"id"`
-	Title               string     `json:"title"`
-	CreatedAt           time.Time  `json:"created_at"`
-	UpdatedAt           time.Time  `json:"updated_at"`
-	ContentType         string     `json:"content_type"`
-	Filename            string     `json:"filename"`
-	Public              bool       `json:"public"`
-	LatestRevisionID    uuid.UUID  `json:"latest_revision_id"`
-	PublishedRevisionID *uuid.UUID `json:"published_revision_id,omitempty"`
+	ID                  uuid.UUID     `json:"id"`
+	Title               string        `json:"title"`
+	CreatedAt           time.Time     `json:"created_at"`
+	UpdatedAt           time.Time     `json:"updated_at"`
+	ContentType         string        `json:"content_type"`
+	Filename            string        `json:"filename"`
+	Public              bool          `json:"public"`
+	LatestRevisionID    uuid.UUID     `json:"latest_revision_id"`
+	PublishedRevisionID *uuid.UUID    `json:"published_revision_id,omitempty"`
 	Tags                []TagResponse `json:"tags"`
-	StashID             uuid.UUID  `json:"stash_id"`
-	UserID              uuid.UUID  `json:"user_id"`
+	StashID             uuid.UUID     `json:"stash_id"`
+	UserID              uuid.UUID     `json:"user_id"`
 }
 
 // TagResponse represents the response for a tag
 type TagResponse struct {
 	ID   uuid.UUID `json:"id"`
 	Name string    `json:"name"`
+}
+
+// PublicRevisionResponse represents the response for a revision
+type PublicRevisionResponse struct {
+	ArtID     string    `json:"art_id"`
+	CreatedAt time.Time `json:"created_at"`
+	Comment   string    `json:"comment"`
+	Size      int64     `json:"size"`
 }
 
 // RevisionResponse represents the response for a revision

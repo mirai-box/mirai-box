@@ -3,6 +3,7 @@ package handler_test
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -48,10 +49,10 @@ func setupWebPageTestServer(t *testing.T) (*httptest.Server, *mocks.WebPageServi
 }
 
 func TestWebPageHandler_CreateWebPage(t *testing.T) {
-	server, mockService := setupWebPageTestServer(t)
-	defer server.Close()
-
 	t.Run("Success", func(t *testing.T) {
+		server, mockService := setupWebPageTestServer(t)
+		defer server.Close()
+
 		webPage := &model.WebPage{
 			ID:       uuid.New(),
 			UserID:   uuid.New(),
@@ -83,6 +84,9 @@ func TestWebPageHandler_CreateWebPage(t *testing.T) {
 	})
 
 	t.Run("Status Unauthorized", func(t *testing.T) {
+		server, mockService := setupWebPageTestServer(t)
+		defer server.Close()
+
 		webPage := &model.WebPage{
 			ID:       uuid.New(),
 			UserID:   uuid.New(),
@@ -95,13 +99,45 @@ func TestWebPageHandler_CreateWebPage(t *testing.T) {
 		body, _ := json.Marshal(webPage)
 		req, _ := http.NewRequest("POST", server.URL+"/self/webpages", bytes.NewBuffer(body))
 		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("Authorization", "")
 
 		resp, err := http.DefaultClient.Do(req)
 		require.NoError(t, err)
 		defer resp.Body.Close()
 
 		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+		mockService.AssertExpectations(t)
+	})
+
+	t.Run("Server error", func(t *testing.T) {
+		server, mockService := setupWebPageTestServer(t)
+		defer server.Close()
+
+		webPage := &model.WebPage{
+			ID:       uuid.New(),
+			UserID:   uuid.New(),
+			Title:    "Test Page",
+			Html:     "<h1>Test</h1>",
+			PageType: "main",
+			Public:   true,
+		}
+
+		mockService.On("CreateWebPage", mock.Anything, webPage).
+			Return(nil, fmt.Errorf("some error"))
+
+		body, _ := json.Marshal(webPage)
+		req, _ := http.NewRequest("POST", server.URL+"/self/webpages", bytes.NewBuffer(body))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("X-User-ID", webPage.UserID.String())
+
+		resp, err := http.DefaultClient.Do(req)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+
+		var response model.ErrorResponse
+		err = json.NewDecoder(resp.Body).Decode(&response)
+		require.NoError(t, err)
+		assert.Equal(t, "Failed to create web page", response.Message)
 		mockService.AssertExpectations(t)
 	})
 }

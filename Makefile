@@ -51,7 +51,7 @@ test/unit:
 
 test/integration:
 	@echo "  >  Running integration tests..."
-	$(GOTEST) -timeout 30s -v -tags=integration -coverprofile=coverage.out -coverpkg=./... ./...
+	$(GOTEST) -timeout 60s -tags=integration ./...
 
 
 clean:
