@@ -39,7 +39,7 @@ func TestGenerateArtID(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			artID, err := GenerateArtID(tt.revisionID, tt.userID, tt.secretKey)
+			artID, err := GeneratePublicID(tt.revisionID, tt.userID, tt.secretKey)
 			if tt.expectError {
 				assert.Error(t, err)
 				assert.Empty(t, artID)
@@ -60,7 +60,7 @@ func TestDecodeArtID(t *testing.T) {
 	revisionID := uuid.New()
 	userID := uuid.New()
 
-	validArtID, err := GenerateArtID(revisionID, userID, secretKey)
+	validArtID, err := GeneratePublicID(revisionID, userID, secretKey)
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -91,7 +91,7 @@ func TestDecodeArtID(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			decodedRevisionID, decodedUserID, err := DecodeArtID(tt.artID, tt.secretKey)
+			decodedRevisionID, decodedUserID, err := DecodePublicID(tt.artID, tt.secretKey)
 			if tt.expectError {
 				assert.Error(t, err)
 				assert.Empty(t, decodedRevisionID)
@@ -115,12 +115,12 @@ func TestEndToEnd(t *testing.T) {
 	userID := uuid.New()
 
 	// Generate ArtID
-	artID, err := GenerateArtID(revisionID, userID, secretKey)
+	artID, err := GeneratePublicID(revisionID, userID, secretKey)
 	require.NoError(t, err)
 	assert.NotEmpty(t, artID)
 
 	// Decode ArtID
-	decodedRevisionID, decodedUserID, err := DecodeArtID(artID, secretKey)
+	decodedRevisionID, decodedUserID, err := DecodePublicID(artID, secretKey)
 	require.NoError(t, err)
 	assert.Equal(t, revisionID.String(), decodedRevisionID)
 	assert.Equal(t, userID.String(), decodedUserID)

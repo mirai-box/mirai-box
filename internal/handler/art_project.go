@@ -105,8 +105,8 @@ func (h *ArtProjectHandler) CreateArtProject(w http.ResponseWriter, r *http.Requ
 // AddRevision handles adding a new revision to an existing art project.
 func (h *ArtProjectHandler) AddRevision(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	artProjectID := chi.URLParam(r, "id")
-	logger := slog.With("handler", "AddRevision", "artID", artProjectID)
+	artProjectID := chi.URLParam(r, "artID")
+	logger := slog.With("handler", "AddRevision", "artProjectID", artProjectID)
 
 	user, ok := middleware.GetUserFromContext(ctx)
 	if !ok {
@@ -124,8 +124,7 @@ func (h *ArtProjectHandler) AddRevision(w http.ResponseWriter, r *http.Request) 
 	}
 	defer file.Close()
 
-	logger = logger.With("artProjectID", artProjectID, "userID", user.ID, "filename", handler.Filename)
-	logger.Info("Adding new revision")
+	logger = logger.With("userID", user.ID, "filename", handler.Filename)
 
 	revision := &model.Revision{
 		ID:           uuid.New(),
@@ -134,7 +133,6 @@ func (h *ArtProjectHandler) AddRevision(w http.ResponseWriter, r *http.Request) 
 		Comment:      comment,
 	}
 
-	// TODO: pass logger over ctx
 	if err := h.artProjectService.AddRevision(ctx, revision, file); err != nil {
 		logger.Error("Failed to add revision", "error", err)
 		SendErrorResponse(w, http.StatusInternalServerError, "Failed to add revision")
@@ -158,7 +156,7 @@ func (h *ArtProjectHandler) ListRevisions(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	artID := chi.URLParam(r, "id")
+	artID := chi.URLParam(r, "artID")
 	logger = logger.With("artID", artID, "userID", user.ID)
 	logger.Info("Listing revisions for art project")
 
@@ -250,7 +248,7 @@ func (h *ArtProjectHandler) MyArtProjectByID(w http.ResponseWriter, r *http.Requ
 			SendErrorResponse(w, http.StatusNotFound, "Art project not found")
 			return
 		}
-		
+
 		logger.Error("Failed to find user's art project", "error", err)
 		SendErrorResponse(w, http.StatusInternalServerError, "Failed to find user's art project")
 		return
@@ -398,5 +396,14 @@ func convertToRevisionResponse(revision *model.Revision) model.RevisionResponse 
 		Size:         revision.Size,
 		ArtProjectID: revision.ArtProjectID,
 		UserID:       revision.UserID,
+	}
+}
+
+func convertToPublicRevisionResponse(revision *model.Revision) model.PublicRevisionResponse {
+	return model.PublicRevisionResponse{
+		ArtID:     revision.ArtID,
+		CreatedAt: revision.CreatedAt,
+		Comment:   revision.Comment,
+		Size:      revision.Size,
 	}
 }

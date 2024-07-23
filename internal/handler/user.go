@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 
@@ -47,6 +48,11 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 
 	createdUser, err := h.userService.CreateUser(ctx, createUserRequest.Username, createUserRequest.Password, createUserRequest.Role)
 	if err != nil {
+		if errors.Is(err, model.ErrDuplicateUsername) {
+			SendErrorResponse(w, http.StatusConflict, "Username already exists")
+			return
+		}
+
 		logger.Error("Failed to create user", "error", err, "username", createUserRequest.Username)
 		SendErrorResponse(w, http.StatusInternalServerError, "Failed to create user")
 		return

@@ -2,6 +2,7 @@ package database
 
 import (
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/jmoiron/sqlx"
@@ -13,6 +14,8 @@ import (
 
 // CreateDatabaseAndUser creates the database and user if they don't exist
 func CreateDatabaseAndUser(conf *config.Config) error {
+	slog.Info("CreateDatabaseAndUser", "user", conf.Database.Username, "db", conf.Database.Database)
+
 	conn, err := sqlx.Connect("postgres", conf.Database.ConnectionPostgres())
 	if err != nil {
 		return fmt.Errorf("failed to connect to PostgreSQL: %w", err)

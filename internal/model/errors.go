@@ -25,4 +25,7 @@ var (
 	ErrInvalidCredentials  = errors.New("invalid credentials")
 	ErrInvalidInput        = errors.New("invalid input parameters")
 	ErrStashCreationFailed = errors.New("failed to create stash")
+	ErrUnauthorized        = errors.New("unauthorized access")
+	ErrDuplicateUsername   = errors.New("username already exists")
+	ErrRevisionNotFound    = errors.New("revision not found")
 )

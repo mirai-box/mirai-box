@@ -18,10 +18,9 @@ type CollectionRepository interface {
 	UpdateCollection(ctx context.Context, collection *model.Collection) error
 	DeleteCollection(ctx context.Context, id string) error
 	FindByUserID(ctx context.Context, userID string) ([]model.Collection, error)
-	AddArtProjectToCollection(ctx context.Context, collectionID, artProjectID string) error
-	RemoveArtProjectFromCollection(ctx context.Context, collectionID, artProjectID string) error
-	FindArtProjectsByCollectionID(ctx context.Context, collectionID string) ([]model.CollectionArtProject, error)
-	FindCollectionsByArtProjectID(ctx context.Context, artProjectID string) ([]model.CollectionArtProject, error)
+	AddRevisionToCollection(ctx context.Context, collectionID, revisionID string) error
+	RemoveRevisionFromCollection(ctx context.Context, collectionID, revisionID string) error
+	GetRevisionsByCollectionID(ctx context.Context, collectionID string) ([]model.Revision, error)
 }
 
 type collectionRepo struct {
@@ -121,29 +120,29 @@ func (r *collectionRepo) FindByUserID(ctx context.Context, userID string) ([]mod
 	return collections, nil
 }
 
-// AddArtProjectToCollection adds an art project to a collection.
-func (r *collectionRepo) AddArtProjectToCollection(ctx context.Context, collectionID, artProjectID string) error {
-	logger := slog.With("method", "AddArtProjectToCollection", "collectionID", collectionID, "artProjectID", artProjectID)
+// AddRevisionToCollection adds an art project to a collection.
+func (r *collectionRepo) AddRevisionToCollection(ctx context.Context, collectionID, revisionID string) error {
+	logger := slog.With("repo", "AddRevisionToCollection", "collectionID", collectionID, "revisionID", revisionID)
 
 	collectionArtProject := model.CollectionArtProject{
 		CollectionID: uuid.MustParse(collectionID),
-		ArtProjectID: uuid.MustParse(artProjectID),
+		RevisionID:   uuid.MustParse(revisionID),
 	}
 
 	if err := r.db.Create(&collectionArtProject).Error; err != nil {
-		logger.Error("Failed to add art project to collection", "error", err)
+		logger.Error("Failed to add revision to collection", "error", err)
 		return err
 	}
 
-	logger.Info("Art project added to collection successfully")
+	logger.Info("Art project revision added to collection successfully")
 	return nil
 }
 
-// RemoveArtProjectFromCollection removes an art project from a collection.
-func (r *collectionRepo) RemoveArtProjectFromCollection(ctx context.Context, collectionID, artProjectID string) error {
-	logger := slog.With("method", "RemoveArtProjectFromCollection", "collectionID", collectionID, "artProjectID", artProjectID)
+// RemoveRevisionFromCollection removes an art project from a collection.
+func (r *collectionRepo) RemoveRevisionFromCollection(ctx context.Context, collectionID, artProjectID string) error {
+	logger := slog.With("repo", "RemoveRevisionFromCollection", "collectionID", collectionID, "artProjectID", artProjectID)
 
-	result := r.db.Where("collection_id = ? AND art_project_id = ?", collectionID, artProjectID).
+	result := r.db.Where("collection_id = ? AND revision_id = ?", collectionID, artProjectID).
 		Delete(&model.CollectionArtProject{})
 
 	if result.Error != nil {
@@ -160,40 +159,29 @@ func (r *collectionRepo) RemoveArtProjectFromCollection(ctx context.Context, col
 	return nil
 }
 
-// FindArtProjectsByCollectionID retrieves all art projects in a specific collection.
-func (r *collectionRepo) FindArtProjectsByCollectionID(ctx context.Context, collectionID string) ([]model.CollectionArtProject, error) {
-	logger := slog.With("method", "FindArtProjectsByCollectionID", "collectionID", collectionID)
+func (r *collectionRepo) GetRevisionsByCollectionID(ctx context.Context, collectionID string) ([]model.Revision, error) {
+	logger := slog.With("repo", "GetRevisionsByCollectionID", "collectionID", collectionID)
 
-	var collectionArtProjects []model.CollectionArtProject
-	if err := r.db.Where("collection_id = ?", collectionID).Find(&collectionArtProjects).Error; err != nil {
-		logger.Error("Failed to find art projects by collection ID", "error", err)
+	var revisions []model.Revision
+	err := r.db.Table("revisions").
+		Joins("JOIN collection_art_projects ON revisions.id = collection_art_projects.revision_id").
+		Where("collection_art_projects.collection_id = ?", collectionID).
+		Find(&revisions).Error
+
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			logger.Info("No revisions found for the collection")
+			return nil, model.ErrRevisionNotFound
+		}
+		logger.Error("Failed to retrieve revisions for the collection", "error", err)
 		return nil, err
 	}
 
-	if len(collectionArtProjects) == 0 {
-		logger.Info("No art projects found in collection")
-		return nil, model.ErrCollectionNotFound
+	if len(revisions) == 0 {
+		logger.Info("No revisions found for the collection")
+		return nil, model.ErrRevisionNotFound
 	}
 
-	logger.Info("Art projects found successfully", "count", len(collectionArtProjects))
-	return collectionArtProjects, nil
-}
-
-// FindCollectionsByArtProjectID retrieves all collections that contain a specific art project.
-func (r *collectionRepo) FindCollectionsByArtProjectID(ctx context.Context, artProjectID string) ([]model.CollectionArtProject, error) {
-	logger := slog.With("method", "FindCollectionsByArtProjectID", "artProjectID", artProjectID)
-
-	var collectionArtProjects []model.CollectionArtProject
-	if err := r.db.Where("art_project_id = ?", artProjectID).Find(&collectionArtProjects).Error; err != nil {
-		logger.Error("Failed to find collections by art project ID", "error", err)
-		return nil, err
-	}
-
-	if len(collectionArtProjects) == 0 {
-		logger.Info("No collections found containing the art project")
-		return nil, model.ErrCollectionNotFound
-	}
-
-	logger.Info("Collections found successfully", "count", len(collectionArtProjects))
-	return collectionArtProjects, nil
+	logger.Info("Revisions retrieved successfully", "count", len(revisions))
+	return revisions, nil
 }
