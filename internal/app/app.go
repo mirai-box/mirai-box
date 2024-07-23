@@ -72,7 +72,7 @@ func SetupRoutes(db *gorm.DB, conf *config.Config) http.Handler {
 		r.With(am.ValidateUUID("id")).Delete("/webpages/{id}", webPageHandler.DeleteWebPage)
 
 		r.Get("/artprojects", artProjectHandler.MyArtProjects)
-		r.With(am.ValidateUUID("id")).Get("/artprojects/{id}", artProjectHandler.MyArtProjectByID)
+		r.With(am.ValidateUUID("artID")).Get("/artprojects/{artID}", artProjectHandler.MyArtProjectByID)
 
 		r.With(am.ValidateUUID("artID")).
 			Get("/artprojects/{artID}/revisions", artProjectHandler.ListRevisions)
