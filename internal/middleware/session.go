@@ -53,18 +53,24 @@ func (m *Middleware) SessionMiddleware(next http.Handler) http.Handler {
 // MockAuthMiddleware simulates authentication for testing purposes
 func (m *Middleware) MockAuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Check for the presence of an Authorization header
-		userID := r.Header.Get("X-User-ID")
-		if userID == "" {
+		var userID string
+		var user *model.User
+
+		if userID = r.Header.Get("X-User-ID"); userID != "" {
+			user = &model.User{
+				ID:       uuid.MustParse(userID),
+				Username: "testuser",
+				Role:     "user",
+			}
+		} else if userID = r.Header.Get("X-Admin-ID"); userID != "" {
+			user = &model.User{
+				ID:       uuid.MustParse(userID),
+				Username: "admin",
+				Role:     "admin",
+			}
+		} else {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
-		}
-
-		// Create a mock user
-		user := &model.User{
-			ID:       uuid.MustParse(userID),
-			Username: "testuser",
-			Role:     "user",
 		}
 
 		// Add the user to the request context

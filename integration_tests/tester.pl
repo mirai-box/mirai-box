@@ -29,6 +29,13 @@ sub debug_json {
     print JSON::PP->new->pretty->encode(decode_json($response->content));
 }
 
+sub is_json {
+    my ($data, $key, $value) = @_;
+
+    my $json_data = decode_json($data->content);
+    is($json_data->{$key}, $value, "'$key' value is '$value'");
+}
+
 sub test_user_flow {
     my $username = generate_username();
 
@@ -113,7 +120,7 @@ sub test_picture_upload_and_revisions {
         'Cookie' => $session_cookie,
     );
     is($art_project_link_resp->code, 200, "Get art-project datae: $art_project_link1");
-    # debug_json($art_project_link_resp);
+    is_json($art_project_link_resp, 'title', 'This is the one');
 
     # Add second revision to the first art project
     my $revision_response = $ua->request(
@@ -128,7 +135,7 @@ sub test_picture_upload_and_revisions {
 
     is($revision_response->code, 201, "First picture revision successful");
     my $revision_data = decode_json($revision_response->content);
-    is($revision_data->{version}, 2, "Revision version is 2");
+    is_json($revision_response, 'version', 2);
 
     my $art_link = "$BASE_URL/art/".$revision_data->{art_id};
     my $revision_public_link = $ua->request(
@@ -149,6 +156,7 @@ sub test_picture_upload_and_revisions {
     );
     
     is($revision_response->code, 201, "Third art revision upload successful");
+    
     $revision_data = decode_json($revision_response->content);
     is($revision_data->{version}, 3, "Revision version is 3");
 

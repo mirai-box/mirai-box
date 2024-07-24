@@ -62,32 +62,31 @@ func (h *WebPageHandler) CreateWebPage(w http.ResponseWriter, r *http.Request) {
 // GetWebPage retrieves a specific web page.
 func (h *WebPageHandler) GetWebPage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	logger := slog.With("handler", "GetWebPage")
-
 	webPageID := chi.URLParam(r, "id")
+
+	logger := slog.With("handler", "GetWebPage", "webPageID", webPageID)
 
 	webPage, err := h.webPageService.GetWebPage(ctx, webPageID)
 	if err != nil {
 		if errors.Is(err, model.ErrWebPageNotFound) {
-			logger.Info("Web page not found", "webPageID", webPageID)
+			logger.Info("Web page not found")
 			SendErrorResponse(w, http.StatusNotFound, "Web page not found")
 		} else {
-			logger.Error("Failed to get web page", "error", err, "webPageID", webPageID)
+			logger.Error("Failed to get web page", "error", err)
 			SendErrorResponse(w, http.StatusInternalServerError, "Failed to get web page")
 		}
 		return
 	}
 
-	logger.Info("Web page retrieved successfully", "webPageID", webPageID)
+	logger.Info("Web page retrieved successfully")
 	SendJSONResponse(w, http.StatusOK, convertToWebPageResponse(webPage))
 }
 
 // UpdateWebPage handles updating an existing web page.
 func (h *WebPageHandler) UpdateWebPage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	logger := slog.With("handler", "UpdateWebPage")
-
 	webPageID := chi.URLParam(r, "id")
+	logger := slog.With("handler", "UpdateWebPage", "webPageID", webPageID)
 
 	var updatedWebPage model.WebPage
 	if err := json.NewDecoder(r.Body).Decode(&updatedWebPage); err != nil {
@@ -97,10 +96,9 @@ func (h *WebPageHandler) UpdateWebPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	updatedWebPage.ID = uuid.MustParse(webPageID)
-
 	user, ok := middleware.GetUserFromContext(ctx)
 	if !ok {
-		logger.Warn("Unauthorized attempt to update web page", "webPageID", webPageID)
+		logger.Warn("Unauthorized attempt to update web page")
 		SendErrorResponse(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
@@ -108,7 +106,7 @@ func (h *WebPageHandler) UpdateWebPage(w http.ResponseWriter, r *http.Request) {
 	existingWebPage, err := h.webPageService.GetWebPage(ctx, webPageID)
 	if err != nil {
 		if errors.Is(err, model.ErrWebPageNotFound) {
-			logger.Info("Web page not found", "webPageID", webPageID)
+			logger.Info("Web page not found")
 			SendErrorResponse(w, http.StatusNotFound, "Web page not found")
 		} else {
 			logger.Error("Error retrieving web page", "error", err)

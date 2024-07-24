@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	"github.com/gorilla/sessions"
 
@@ -15,10 +16,17 @@ import (
 	"github.com/mirai-box/mirai-box/internal/service"
 )
 
+// use a single instance of Validate, it caches struct info
+var validate *validator.Validate
+
 // UserHandler handles HTTP requests related to user operations.
 type UserHandler struct {
 	userService service.UserService
 	store       *sessions.CookieStore
+}
+
+func init() {
+	validate = validator.New(validator.WithRequiredStructEnabled())
 }
 
 // NewUserHandler creates a new instance of UserHandler.
@@ -35,14 +43,20 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	logger := slog.With("handler", "CreateUser")
 
 	var createUserRequest struct {
-		Username string `json:"username"`
-		Password string `json:"password"`
-		Role     string `json:"role"`
+		Username string `json:"username"  validate:"required"`
+		Password string `json:"password"  validate:"required"`
+		Role     string `json:"role"      validate:"required"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&createUserRequest); err != nil {
 		logger.Error("Failed to decode user json", "error", err)
 		SendErrorResponse(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	if err := validate.Struct(createUserRequest); err != nil {
+		logger.Error("Invalid input data", "error", err)
+		SendErrorResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -109,18 +123,22 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 // GetUser retrieves user information.
 func (h *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	logger := slog.With("handler", "GetUser")
-
 	userID := chi.URLParam(r, "id")
-	if userID == "" {
-		logger.Warn("GetUser called without user ID")
-		SendErrorResponse(w, http.StatusBadRequest, "User ID is required")
+	logger := slog.With("handler", "GetUser", "userID", userID)
+
+	requestingUser, ok := middleware.GetUserFromContext(ctx)
+	if !ok {
+		logger.Warn("User not found in context")
+		SendErrorResponse(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 
-	requestingUserID, ok := middleware.GetUserIDFromContext(ctx)
-	if !ok || requestingUserID != userID {
-		logger.Warn("Unauthorized attempt to view user data", "requestingUserID", requestingUserID, "targetUserID", userID)
+	// Allow access if the requesting user is an admin or if they're requesting their own data
+	if requestingUser.Role != "admin" && requestingUser.ID.String() != userID {
+		logger.Warn("Unauthorized attempt to view user data",
+			"requestingUserID", requestingUser.ID,
+			"requestingUserRole", requestingUser.Role,
+			"targetUserID", userID)
 		SendErrorResponse(w, http.StatusForbidden, "You don't have permission to view this user's data")
 		return
 	}
@@ -139,14 +157,8 @@ func (h *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 // UpdateUser handles updating user information.
 func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	logger := slog.With("handler", "UpdateUser")
-
 	userID := chi.URLParam(r, "id")
-	if userID == "" {
-		logger.Warn("UpdateUser called without user ID")
-		SendErrorResponse(w, http.StatusBadRequest, "User ID is required")
-		return
-	}
+	logger := slog.With("handler", "UpdateUser", "userID", userID)
 
 	var updateUserRequest struct {
 		Username string `json:"username"`
@@ -160,16 +172,26 @@ func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sessionUserID, ok := middleware.GetUserIDFromContext(ctx)
-	if !ok || sessionUserID != userID {
-		logger.Warn("Unauthorized attempt to update user", "sessionUserID", sessionUserID, "targetUserID", userID)
+	requestingUser, ok := middleware.GetUserFromContext(ctx)
+	if !ok {
+		logger.Warn("User not found in context")
 		SendErrorResponse(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 
-	sessionUserUUID, err := uuid.Parse(sessionUserID)
+	// Allow access if the requesting user is an admin or if they're requesting their own data
+	if requestingUser.Role != "admin" && requestingUser.ID.String() != userID {
+		logger.Warn("Unauthorized attempt to update user",
+			"requestingUserID", requestingUser.ID,
+			"requestingUserRole", requestingUser.Role,
+			"targetUserID", userID)
+		SendErrorResponse(w, http.StatusForbidden, "You don't have permission to view this user's data")
+		return
+	}
+
+	sessionUserUUID, err := uuid.Parse(userID)
 	if err != nil {
-		logger.Error("Failed to parse UUID in the session", "error", err, "sessionUserID", sessionUserID)
+		logger.Error("Failed to parse UUID in the session", "error", err, "sessionUserID", sessionUserUUID)
 		SendErrorResponse(w, http.StatusInternalServerError, "Failed to update user")
 		return
 	}
@@ -194,25 +216,29 @@ func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 // DeleteUser handles user deletion.
 func (h *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	logger := slog.With("handler", "DeleteUser")
-
 	userID := chi.URLParam(r, "id")
-	if userID == "" {
-		logger.Warn("DeleteUser called without user ID")
-		SendErrorResponse(w, http.StatusBadRequest, "User ID is required")
+	logger := slog.With("handler", "DeleteUser", "targetUserID", userID)
+
+	sessionUser, ok := middleware.GetUserFromContext(ctx)
+	if !ok {
+		logger.Warn("Unauthorized attempt to delete user", "sessionUserID", sessionUser.ID)
+		SendErrorResponse(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 
-	sessionUserID, ok := middleware.GetUserIDFromContext(ctx)
-	if !ok || sessionUserID != userID {
-		logger.Warn("Unauthorized attempt to delete user", "sessionUserID", sessionUserID, "targetUserID", userID)
+	if sessionUser.Role != "admin" {
+		logger.Warn("Unauthorized attempt to delete user", "sessionUserID", sessionUser.ID)
 		SendErrorResponse(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 
 	err := h.userService.DeleteUser(ctx, userID)
 	if err != nil {
-		logger.Error("Failed to delete user", "error", err, "userID", userID)
+		logger.Error("Failed to delete user", "error", err)
+		if errors.Is(err, model.ErrUserNotFound) {
+			SendErrorResponse(w, http.StatusNotFound, "User not found")
+			return
+		}
 		SendErrorResponse(w, http.StatusInternalServerError, "Failed to delete user")
 		return
 	}

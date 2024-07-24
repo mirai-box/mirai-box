@@ -60,33 +60,21 @@ func (h *CollectionHandler) CreateCollection(w http.ResponseWriter, r *http.Requ
 
 func (h *CollectionHandler) GetCollection(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	logger := slog.With("handler", "GetCollection")
-
 	collectionID := chi.URLParam(r, "id")
-	if collectionID == "" {
-		logger.Warn("Collection ID is empty")
-		SendErrorResponse(w, http.StatusBadRequest, "Collection ID is required")
-		return
-	}
+	logger := slog.With("handler", "GetCollection", "collectionID", collectionID)
 
 	collection, err := h.collectionService.FindByID(ctx, collectionID)
 	if err != nil {
-		logger.Error("Failed to get collection", "error", err, "collectionID", collectionID)
+		logger.Error("Failed to get collection", "error", err)
 		if err == model.ErrCollectionNotFound {
-			SendErrorResponse(w, http.StatusNotFound, "Invalid input")
+			SendErrorResponse(w, http.StatusNotFound, "Collection not found")
 		} else {
 			SendErrorResponse(w, http.StatusInternalServerError, "Failed to get collection")
 		}
 		return
 	}
 
-	if collection == nil {
-		logger.Info("Collection not found", "collectionID", collectionID)
-		SendErrorResponse(w, http.StatusNotFound, "Collection not found")
-		return
-	}
-
-	logger.Info("Collection retrieved successfully", "collectionID", collectionID)
+	logger.Info("Collection retrieved successfully")
 	SendJSONResponse(w, http.StatusOK, collection)
 }
 
@@ -128,15 +116,9 @@ func (h *CollectionHandler) UpdateCollection(w http.ResponseWriter, r *http.Requ
 	}
 
 	collectionID := chi.URLParam(r, "id")
-	if collectionID == "" {
-		logger.Warn("Collection ID is empty")
-		SendErrorResponse(w, http.StatusBadRequest, "Collection ID is required")
-		return
-	}
 	collection.ID = uuid.MustParse(collectionID)
 
-	err := h.collectionService.UpdateCollection(ctx, &collection)
-	if err != nil {
+	if err := h.collectionService.UpdateCollection(ctx, &collection); err != nil {
 		logger.Error("Failed to update collection", "error", err, "collectionID", collectionID)
 		if err == model.ErrCollectionNotFound {
 			SendErrorResponse(w, http.StatusNotFound, "Collection not found")
@@ -152,18 +134,13 @@ func (h *CollectionHandler) UpdateCollection(w http.ResponseWriter, r *http.Requ
 
 func (h *CollectionHandler) DeleteCollection(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	logger := slog.With("handler", "DeleteCollection")
-
 	collectionID := chi.URLParam(r, "id")
-	if collectionID == "" {
-		logger.Warn("Collection ID is empty")
-		SendErrorResponse(w, http.StatusBadRequest, "Collection ID is required")
-		return
-	}
+
+	logger := slog.With("handler", "DeleteCollection", "collectionID", collectionID)
 
 	err := h.collectionService.DeleteCollection(ctx, collectionID)
 	if err != nil {
-		logger.Error("Failed to delete collection", "error", err, "collectionID", collectionID)
+		logger.Error("Failed to delete collection", "error", err)
 		if err == model.ErrCollectionNotFound {
 			SendErrorResponse(w, http.StatusNotFound, "Collection not found")
 		} else {
@@ -172,7 +149,7 @@ func (h *CollectionHandler) DeleteCollection(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	logger.Info("Collection deleted successfully", "collectionID", collectionID)
+	logger.Info("Collection deleted successfully")
 	SendJSONResponse(w, http.StatusOK, map[string]string{"message": "Collection deleted successfully"})
 }
 
