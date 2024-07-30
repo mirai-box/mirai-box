@@ -45,7 +45,7 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	var createUserRequest struct {
 		Username string `json:"username"  validate:"required"`
 		Password string `json:"password"  validate:"required"`
-		Role     string `json:"role"      validate:"required"`
+		Role     string `json:"role"      validate:"required, oneof=user admin"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&createUserRequest); err != nil {
@@ -82,14 +82,20 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 	logger := slog.With("handler", "Login")
 
 	var loginRequest struct {
-		Username     string `json:"username"`
-		Password     string `json:"password"`
-		KeepSignedIn bool   `json:"keepSignedIn"`
+		Username     string `json:"username"      validate:"required"`
+		Password     string `json:"password"      validate:"required"`
+		KeepSignedIn bool   `json:"keepSignedIn"  validate:"required"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&loginRequest); err != nil {
 		logger.Error("Failed to decode login request", "error", err)
 		SendErrorResponse(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	if err := validate.Struct(loginRequest); err != nil {
+		logger.Error("Invalid input data", "error", err)
+		SendErrorResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -161,14 +167,20 @@ func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	logger := slog.With("handler", "UpdateUser", "userID", userID)
 
 	var updateUserRequest struct {
-		Username string `json:"username"`
-		Password string `json:"password"`
-		Role     string `json:"role"`
+		Username string `json:"username"  validate:"required"`
+		Password string `json:"password"  validate:"required"`
+		Role     string `json:"role"      validate:"required, oneof=user admin"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&updateUserRequest); err != nil {
 		logger.Error("Failed to decode update user request", "error", err)
 		SendErrorResponse(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	if err := validate.Struct(updateUserRequest); err != nil {
+		logger.Error("Invalid input data", "error", err)
+		SendErrorResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
