@@ -37,6 +37,11 @@ build/local:
 	$(GOBUILD) -o $(GOBIN)/$(BINARY) $(MAIN_GO)
 
 # Run the application
+run/bin:
+	@echo "  >  Running application ..."
+	$(GOBIN)/$(BINARY)
+
+# Run the application
 run/local:
 	@echo "  >  Running application locally..."
 	$(GORUN) $(MAIN_GO)
