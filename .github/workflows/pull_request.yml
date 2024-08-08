@@ -60,7 +60,7 @@ jobs:
         run: make build/local
 
       - name: Start Go service
-        run: make run/local &
+        run: make run/bin &
         env:
           PORT: "8080"
           DB_HOST: "127.0.0.1"
