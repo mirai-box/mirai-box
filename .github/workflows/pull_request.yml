@@ -1,24 +1,103 @@
-name: Build and test
+name: Build and Test
 
 on:
   pull_request:
     branches: ["main"]
 
 jobs:
-  build:
+  # Job 1: Build and Unit Tests
+  build-and-unit-tests:
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
+
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
           go-version: '1.22.x'
+
       - name: Install dependencies
         run: make init
+
       - name: Build
         run: go build -v ./...
+
       - name: Unit tests
         run: make test/unit
-      - name: Integration tests
-        run: make test/integration
+
+  # Job 2: Integration Tests
+  integration-tests:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:13
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_DB: mirai_box_db_13
+          POSTGRES_USER: mirai_box_user
+          POSTGRES_PASSWORD: mirai_box_password
+        options: >-
+          --health-cmd="pg_isready -U $POSTGRES_USER -d $POSTGRES_DB"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22.x'
+
+      - name: Install dependencies
+        run: make init
+
+      - name: Build Go service
+        run: make build/local
+
+      - name: Start Go service
+        run: make run/local &
+        env:
+          PORT: "8080"
+          DB_HOST: "127.0.0.1"
+          DB_PORT: "5432"
+          DB_USER: "mirai_box_user"
+          DB_PASSWORD: "mirai_box_password"
+          DB_POSTGRES_PASSWORD: "new_password"
+          DB_NAME: "mirai_box_db_13"
+          APP_ENV: "local"
+          SESSION_KEY: "e7j7eVPRDCd3f_KiQd@VeNCoBgP2pd*eL6q"
+          LOG_LEVEL: "DEBUG"
+          SECRET_KEY: "594f2ad00c2d8fd1543f8993b586b4143d508bc58f3c9b08e5967ab50175cb81"
+
+      - name: Wait for Go service to be ready
+        run: |
+          for i in {1..30}; do
+            if nc -zv 127.0.0.1 8080; then
+              echo "Service is up!"
+              break
+            fi
+            echo "Waiting for service..."
+            sleep 2
+          done
+
+      - name: Install Perl and cpanminus
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y perl curl
+          curl -L https://cpanmin.us | perl - --sudo App::cpanminus
+  
+      - name: Install Perl dependencies
+        run: |
+          cpanm LWP::UserAgent
+
+      - name: Run Perl script to test endpoint
+        run: |
+          perl integration_tests/tester.pl
+
+      - name: Kill Go service
+        run: killall miraibox

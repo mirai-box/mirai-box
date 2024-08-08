@@ -169,7 +169,7 @@ func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	var updateUserRequest struct {
 		Username string `json:"username"  validate:"required"`
 		Password string `json:"password"  validate:"required"`
-		Role     string `json:"role"      validate:"required, oneof=user admin"`
+		Role     string `json:"role"      validate:"required,oneof=user admin"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&updateUserRequest); err != nil {

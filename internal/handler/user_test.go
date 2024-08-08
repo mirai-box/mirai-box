@@ -299,7 +299,9 @@ func TestUserHandler_UpdateUser(t *testing.T) {
 		mockService.On("UpdateUser", mock.Anything, mock.AnythingOfType("*model.User")).Return(nil).Once()
 
 		body := bytes.NewBufferString(`{"username":"updateduser","password":"newpassword","role":"admin"}`)
-		req, _ := http.NewRequest("PUT", fmt.Sprintf("%s/api/users/%s", server.URL, userID.String()), body)
+		req, err := http.NewRequest("PUT", fmt.Sprintf("%s/api/users/%s", server.URL, userID.String()), body)
+		assert.NoError(t, err)
+
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("X-Admin-ID", uuid.NewString())
 
