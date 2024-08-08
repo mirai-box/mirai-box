@@ -1,4 +1,4 @@
-name: Checks on PR
+name: Build and test
 
 on:
   pull_request:

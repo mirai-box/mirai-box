@@ -1,4 +1,4 @@
-name: Go Service CI
+name: Integration testsx
 
 on:
     pull_request:
