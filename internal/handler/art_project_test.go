@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -602,6 +603,27 @@ func TestArtProjectHandler_MyArtProjects(t *testing.T) {
 		mockService.AssertExpectations(t)
 	})
 
+	t.Run("No Projects Found with error", func(t *testing.T) {
+		mockService.On("FindByUserID", mock.Anything, userID.String()).
+			Return([]model.ArtProject{}, model.ErrArtProjectNotFound).Once()
+
+		req, _ := http.NewRequest("GET", server.URL+"/self/artprojects", nil)
+		req.Header.Set("X-User-ID", userID.String())
+
+		resp, err := http.DefaultClient.Do(req)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+		var response []model.ArtProjectResponse
+		err = json.NewDecoder(resp.Body).Decode(&response)
+		require.NoError(t, err)
+		assert.Len(t, response, 0)
+
+		mockService.AssertExpectations(t)
+	})
+
 	t.Run("Service Error", func(t *testing.T) {
 		mockService.On("FindByUserID", mock.Anything, userID.String()).Return(nil, errors.New("database error")).Once()
 
@@ -669,6 +691,21 @@ func TestArtProjectHandler_MyArtProjectByID(t *testing.T) {
 		defer resp.Body.Close()
 
 		assert.Equal(t, http.StatusNotFound, resp.StatusCode)
+		mockService.AssertExpectations(t)
+	})
+
+	t.Run("Server error", func(t *testing.T) {
+		mockService.On("FindByID", mock.Anything, artProjectID.String()).
+			Return(nil, fmt.Errorf("some error")).Once()
+
+		req, _ := http.NewRequest("GET", server.URL+"/self/artprojects/"+artProjectID.String(), nil)
+		req.Header.Set("X-User-ID", userID.String())
+
+		resp, err := http.DefaultClient.Do(req)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+
+		assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
 		mockService.AssertExpectations(t)
 	})
 
