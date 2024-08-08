@@ -84,11 +84,6 @@ jobs:
             echo "Waiting for service..."
             sleep 2
           done
-
-      # - name: Install Perl and cpanminus
-      #   run: |
-      #     sudo apt-get update
-      #     sudo apt-get install -y perl
   
       - name: install cpanm and one module
         uses: perl-actions/install-with-cpanm@stable
@@ -103,7 +98,8 @@ jobs:
 
       - name: Run Perl script to test endpoint
         run: |
-          perl integration_tests/tester.pl
+          cd integration_tests
+          perl tester.pl
 
       - name: Kill Go service
         run: killall miraibox
