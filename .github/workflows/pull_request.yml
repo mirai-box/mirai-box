@@ -36,7 +36,7 @@ jobs:
         ports:
           - 5432:5432
         env:
-          POSTGRES_DB: mirai_box_db_13
+          POSTGRES_DB: mirai_box_db
           POSTGRES_USER: mirai_box_user
           POSTGRES_PASSWORD: mirai_box_password
         options: >-
@@ -67,8 +67,8 @@ jobs:
           DB_PORT: "5432"
           DB_USER: "mirai_box_user"
           DB_PASSWORD: "mirai_box_password"
-          DB_POSTGRES_PASSWORD: "new_password"
-          DB_NAME: "mirai_box_db_13"
+          DB_POSTGRES_PASSWORD: "mirai_box_password"
+          DB_NAME: "mirai_box_db"
           APP_ENV: "local"
           SESSION_KEY: "e7j7eVPRDCd3f_KiQd@VeNCoBgP2pd*eL6q"
           LOG_LEVEL: "DEBUG"
@@ -96,6 +96,10 @@ jobs:
           install: |
             Test::More
             LWP::UserAgent
+            Data::Dumper
+            File::Slurp
+            JSON::PP
+            HTTP::Cookies
 
       - name: Run Perl script to test endpoint
         run: |
