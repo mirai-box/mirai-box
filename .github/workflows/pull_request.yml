@@ -37,7 +37,7 @@ jobs:
           - 5432:5432
         env:
           POSTGRES_DB: mirai_box_db
-          POSTGRES_USER: mirai_box_user
+          POSTGRES_USER: postgres
           POSTGRES_PASSWORD: mirai_box_password
         options: >-
           --health-cmd="pg_isready -U $POSTGRES_USER -d $POSTGRES_DB"
