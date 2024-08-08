@@ -1,7 +1,7 @@
 PROJECT_NAME := miraibox
 
 BIN_DIR := bin
-BINARY := app
+BINARY := $(PROJECT_NAME)
 
 # Go related variables.
 GOBASE := $(shell pwd)
@@ -52,7 +52,6 @@ test/unit:
 test/integration:
 	@echo "  >  Running integration tests..."
 	$(GOTEST) -timeout 60s -tags=integration ./...
-
 
 clean:
 	@echo "  >  Cleaning build cache"
