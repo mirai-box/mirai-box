@@ -85,15 +85,17 @@ jobs:
             sleep 2
           done
 
-      - name: Install Perl and cpanminus
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y perl curl
-          curl -L https://cpanmin.us | perl - --sudo App::cpanminus
+      # - name: Install Perl and cpanminus
+      #   run: |
+      #     sudo apt-get update
+      #     sudo apt-get install -y perl
   
-      - name: Install Perl dependencies
-        run: |
-          cpanm LWP::UserAgent
+      - name: install cpanm and one module
+        uses: perl-actions/install-with-cpanm@stable
+        with:
+          install: |
+            Test::More
+            LWP::UserAgent
 
       - name: Run Perl script to test endpoint
         run: |
