@@ -19,6 +19,12 @@ import (
 // use a single instance of Validate, it caches struct info
 var validate *validator.Validate
 
+type userRequest struct {
+	Username string `json:"username"  validate:"required"`
+	Password string `json:"password"  validate:"required"`
+	Role     string `json:"role"      validate:"required,oneof=user admin"`
+}
+
 // UserHandler handles HTTP requests related to user operations.
 type UserHandler struct {
 	userService service.UserService
@@ -42,12 +48,7 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	logger := slog.With("handler", "CreateUser")
 
-	var createUserRequest struct {
-		Username string `json:"username"  validate:"required"`
-		Password string `json:"password"  validate:"required"`
-		Role     string `json:"role"      validate:"required, oneof=user admin"`
-	}
-
+	createUserRequest := userRequest{}
 	if err := json.NewDecoder(r.Body).Decode(&createUserRequest); err != nil {
 		logger.Error("Failed to decode user json", "error", err)
 		SendErrorResponse(w, http.StatusBadRequest, "Invalid request body")
@@ -81,11 +82,7 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	logger := slog.With("handler", "Login")
 
-	var loginRequest struct {
-		Username     string `json:"username"      validate:"required"`
-		Password     string `json:"password"      validate:"required"`
-		KeepSignedIn bool   `json:"keepSignedIn"  validate:"required"`
-	}
+	loginRequest := model.LoginRequest{}
 
 	if err := json.NewDecoder(r.Body).Decode(&loginRequest); err != nil {
 		logger.Error("Failed to decode login request", "error", err)
@@ -166,12 +163,7 @@ func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	userID := chi.URLParam(r, "id")
 	logger := slog.With("handler", "UpdateUser", "userID", userID)
 
-	var updateUserRequest struct {
-		Username string `json:"username"  validate:"required"`
-		Password string `json:"password"  validate:"required"`
-		Role     string `json:"role"      validate:"required,oneof=user admin"`
-	}
-
+	updateUserRequest := userRequest{}
 	if err := json.NewDecoder(r.Body).Decode(&updateUserRequest); err != nil {
 		logger.Error("Failed to decode update user request", "error", err)
 		SendErrorResponse(w, http.StatusBadRequest, "Invalid request body")

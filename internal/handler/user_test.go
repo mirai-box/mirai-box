@@ -145,10 +145,13 @@ func TestUserHandler_Login(t *testing.T) {
 			Role:     "user",
 		}
 
-		mockService.On("Authenticate", mock.Anything, "testuser", "password123").Return(user, nil).Once()
+		mockService.On("Authenticate", mock.Anything, "testuser", "password123").
+			Return(user, nil).Once()
 
 		body := bytes.NewBufferString(`{"username":"testuser","password":"password123","keepSignedIn":false}`)
-		req, _ := http.NewRequest("POST", server.URL+"/login", body)
+		req, err := http.NewRequest("POST", server.URL+"/login", body)
+		assert.NoError(t, err)
+
 		req.Header.Set("Content-Type", "application/json")
 
 		resp, err := http.DefaultClient.Do(req)
